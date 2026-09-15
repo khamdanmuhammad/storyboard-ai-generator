@@ -97,7 +97,7 @@
         <div id="output-section" class="hidden">
             <h2 class="text-2xl font-bold mb-6">Hasil Generate (Video 30 Detik)</h2>
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6" id="storyboard-grid">
-                <!-- Template for a Part will be injected here -->
+                <!-- Template for Parts injected via JS -->
             </div>
         </div>
 
@@ -108,12 +108,12 @@
         <div class="bg-gray-800 rounded-xl border border-gray-700 p-6 max-w-md w-full shadow-2xl">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-lg font-bold flex items-center gap-2 text-yellow-400">
-                    <i class="fas fa-key"></i> Konfigurasi API Key
+                    <i class="fas fa-key"></i> Konfigurasi API Key (Opsional)
                 </h3>
                 <button id="close-api-modal" class="text-gray-400 hover:text-white"><i class="fas fa-times"></i></button>
             </div>
             <p class="text-gray-300 text-sm mb-4">
-                Masukkan Google Gemini API Key Anda agar aplikasi dapat terhubung ke AI Studio. Kunci Anda aman dan hanya disimpan di browser lokal Anda.
+                Secara bawaan sistem sudah berjalan otomatis. Jika Anda ingin menggunakan API Key pribadi dari Google AI Studio, masukkan di bawah ini.
             </p>
             <div class="mb-4">
                 <label class="block text-xs font-medium text-gray-400 mb-1">Gemini API Key</label>
@@ -131,7 +131,7 @@
         <div class="bg-gray-800 rounded-xl border border-gray-700 p-6 max-w-sm w-full shadow-2xl transform transition-all">
             <div class="flex items-center gap-3 mb-4 text-red-400">
                 <i class="fas fa-exclamation-circle text-2xl"></i>
-                <h3 class="text-lg font-bold">Peringatan</h3>
+                <h3 class="text-lg font-bold">Informasi</h3>
             </div>
             <p id="modal-message" class="text-gray-300 mb-6"></p>
             <div class="flex justify-end">
@@ -169,7 +169,7 @@
         let base64Image = null;
         let mimeType = null;
 
-        // Load API key from localStorage on startup
+        // Load API key from localStorage
         function getApiKey() {
             return localStorage.getItem('gemini_api_key') || '';
         }
@@ -177,7 +177,7 @@
         function updateApiKeyStatus() {
             const key = getApiKey();
             if (key) {
-                apiKeyStatus.textContent = "API Key Aktif";
+                apiKeyStatus.textContent = "API Key Custom";
                 settingsBtn.classList.remove('border-yellow-500/50');
                 settingsBtn.classList.add('border-green-500/50');
                 settingsBtn.querySelector('i').classList.remove('text-yellow-400');
@@ -201,11 +201,13 @@
         saveApiKeyBtn.addEventListener('click', () => {
             const key = apiKeyInput.value.trim();
             if (!key) {
-                showAlert("API Key tidak boleh kosong.");
-                return;
+                localStorage.removeItem('gemini_api_key');
+                updateApiKeyStatus();
+                showAlert("Menggunakan API Key default bawaan sistem.");
+            } else {
+                localStorage.setItem('gemini_api_key', key);
+                updateApiKeyStatus();
             }
-            localStorage.setItem('gemini_api_key', key);
-            updateApiKeyStatus();
             apiModal.style.display = 'none';
         });
 
@@ -242,7 +244,6 @@
             }
         }
 
-        // Handle Image Upload
         uploadInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (file) {
@@ -278,7 +279,6 @@
             outputSection.classList.add('hidden');
         });
 
-        // Exponential Backoff Fetch
         async function fetchWithRetry(url, options, maxRetries = 3) {
             const delays = [1000, 2000, 4000];
             for (let i = 0; i < maxRetries; i++) {
@@ -300,14 +300,8 @@
             }
         }
 
-        // Main Generation Process
         generateBtn.addEventListener('click', async () => {
-            const apiKey = getApiKey();
-            if (!apiKey) {
-                apiModal.style.display = 'flex';
-                showAlert("Silakan masukkan Google Gemini API Key Anda terlebih dahulu.");
-                return;
-            }
+            const apiKey = getApiKey(); // Default empty string allows system proxy auto-key injection
 
             if (!base64Image) {
                 showAlert("Silakan unggah foto produk terlebih dahulu.");
@@ -322,16 +316,16 @@
             loadingText.textContent = "Menganalisis produk & menyusun konsep (1/2)...";
 
             try {
-                // 1. Call Gemini to create the storyboard plan
+                // 1. Call Gemini 3 Flash Preview to create storyboard plan
                 const plan = await generateStoryboardPlan(apiKey);
                 
-                // 2. Render UI skeleton for the 3 parts
+                // 2. Render UI skeleton
                 renderStoryboardUI(plan);
                 
                 // 3. Update loading text
                 loadingText.textContent = "Membuat gambar visualisasi (2/2)...";
                 
-                // 4. Call Imagen for each part concurrently
+                // 4. Call Gemini Flash Image for visuals concurrently
                 const imagePromises = plan.map((part, index) => generateImageForPart(part.imagePrompt, index, apiKey));
                 
                 await Promise.allSettled(imagePromises);
@@ -345,9 +339,9 @@
             }
         });
 
-        // Step 1: Gemini text generation
         async function generateStoryboardPlan(apiKey) {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+            // Using updated Gemini 3 Flash Preview model
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
             
             const systemInstruction = `Anda adalah seorang Creative Director dan Prompt Engineer ahli. Tugas Anda adalah membuat storyboard 3 bagian untuk iklan video 30 detik berdasarkan produk yang diunggah. 
 Target video: Realistis, cinematik, pergerakan halus (smooth motion), dan menampilkan interaksi manusia (model) dengan produk, bukan sekadar memajang produk.`;
@@ -357,8 +351,8 @@ Untuk setiap bagian berikan:
 1. "part_time": Rentang waktu (misal: "Bagian 1: 0 - 10 Detik (Intro)").
 2. "deskripsi": Deskripsi adegan dalam bahasa Indonesia (Apa yang terjadi).
 3. "kamera": Detail angle dan pergerakan kamera (Pan, Tilt, Tracking, dll) dalam bahasa Indonesia.
-4. "video_prompt": Prompt berbahasa Inggris yang sangat detail untuk AI Text-to-Video (seperti Google Flow/Veo/Sora). Harus mengandung kata kunci: photorealistic, cinematic lighting, 8k resolution, smooth motion, highly detailed. Jelaskan aksinya dengan jelas.
-5. "image_prompt": Prompt berbahasa Inggris untuk AI Image Generator (Imagen) untuk membuat visual storyboard. WAJIB MENYEBUTKAN: "A photorealistic image of a human model [interacting with/using/wearing] [the product]". Jangan gunakan teks/tulisan di dalam gambar. Harus realistis seperti foto asli.`;
+4. "video_prompt": Prompt berbahasa Inggris yang sangat detail untuk AI Text-to-Video (seperti Google Veo/Sora). Harus mengandung kata kunci: photorealistic, cinematic lighting, 8k resolution, smooth motion, highly detailed. Jelaskan aksinya dengan jelas.
+5. "image_prompt": Prompt berbahasa Inggris untuk AI Image Generator untuk membuat visual storyboard. WAJIB MENYEBUTKAN: "A photorealistic image of a human model interacting with the product". Jangan gunakan teks/tulisan di dalam gambar. Harus realistis seperti foto asli.`;
 
             const payload = {
                 contents: [{
@@ -389,10 +383,7 @@ Untuk setiap bagian berikan:
 
             const response = await fetchWithRetry(url, {
                 method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'x-goog-api-key': apiKey
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
 
@@ -402,7 +393,6 @@ Untuk setiap bagian berikan:
             return JSON.parse(textResponse);
         }
 
-        // Step 2: Render UI Skeleton
         function renderStoryboardUI(planData) {
             planData.forEach((part, index) => {
                 const card = document.createElement('div');
@@ -450,44 +440,50 @@ Untuk setiap bagian berikan:
             });
         }
 
-        // Step 3: Generate Image using Imagen API with Fallbacks
         async function generateImageForPart(prompt, index, apiKey) {
+            // Updated image generation models
             const models = [
-                'imagen-3.0-generate-002',
-                'imagen-3.0-fast-generate-001'
+                'gemini-3.1-flash-image',
+                'gemini-3.1-flash-lite-image'
             ];
             
             const enhancedPrompt = `${prompt}, highly detailed, 8k resolution, cinematic lighting, hyperrealistic photography, shot on 35mm lens, depth of field.`;
-            const payload = {
-                instances: [ { prompt: enhancedPrompt } ],
-                parameters: { sampleCount: 1 }
-            };
-
+            
             const imgElement = document.getElementById(`img-part-${index}`);
             const loadingElement = document.getElementById(`img-loading-${index}`);
 
             let success = false;
             for (const model of models) {
                 if (success) break;
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:predict?key=${apiKey}`;
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+                
+                const payload = {
+                    contents: [{
+                        role: 'user',
+                        parts: [{ text: enhancedPrompt }]
+                    }],
+                    generationConfig: {
+                        responseModalities: ['IMAGE'],
+                        imageConfig: { aspectRatio: "16:9" }
+                    }
+                };
+
                 try {
                     const response = await fetchWithRetry(url, {
                         method: 'POST',
-                        headers: { 
-                            'Content-Type': 'application/json',
-                            'x-goog-api-key': apiKey
-                        },
+                        headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(payload)
                     });
 
-                    if (response.predictions && response.predictions[0] && response.predictions[0].bytesBase64Encoded) {
-                        const imageUrl = `data:image/png;base64,${response.predictions[0].bytesBase64Encoded}`;
+                    const part = response?.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+                    if (part && part.inlineData && part.inlineData.data) {
+                        const imageUrl = `data:${part.inlineData.mimeType || 'image/png'};base64,${part.inlineData.data}`;
                         imgElement.src = imageUrl;
                         imgElement.classList.remove('hidden');
                         success = true;
                     }
                 } catch (err) {
-                    console.warn(`Model ${model} gagal, mencoba fallback...`);
+                    console.warn(`Model ${model} gagal, mencoba model cadangan...`, err);
                 }
             }
 
