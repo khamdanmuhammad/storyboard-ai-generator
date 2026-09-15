@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Storyboard & Video Prompt Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a; /* Slate 900 */
+            color: #f8fafc;
+        }
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7); /* Slate 800 with opacity */
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+        .loader {
+            border: 3px solid rgba(255,255,255,0.1);
+            border-left-color: #3b82f6;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-8">
+
+<div class="max-w-6xl mx-auto">
+    <!-- Header -->
+    <header class="text-center mb-10">
+        <h1 class="text-3xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-emerald-400 mb-4">
+            AI Storyboard Studio
+        </h1>
+        <p class="text-slate-400 max-w-2xl mx-auto">
+            Unggah produk Anda dan biarkan AI merancang konsep video komersial 30 detik lengkap dengan foto storyboard realistis dan prompt untuk Google Flow AI / Video Generator.
+        </p>
+    </header>
+
+    <!-- Main Content Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        <!-- Left Column: Input Form -->
+        <div class="lg:col-span-1">
+            <div class="glass-panel rounded-2xl p-6 sticky top-8">
+                <h2 class="text-xl font-semibold mb-4 flex items-center gap-2">
+                    <i class="fas fa-box-open text-blue-400"></i> Detail Produk
+                </h2>
+                
+                <!-- Image Upload -->
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-slate-300 mb-2">Foto Produk</label>
+                    <div id="drop-zone" class="border-2 border-dashed border-slate-600 rounded-xl p-6 text-center hover:border-blue-500 transition-colors cursor-pointer relative overflow-hidden group">
+                        <input type="file" id="image-upload" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+                        <div id="upload-placeholder" class="space-y-2">
+                            <i class="fas fa-cloud-upload-alt text-3xl text-slate-400 group-hover:text-blue-400 transition-colors"></i>
+                            <p class="text-sm text-slate-400">Klik atau drop gambar di sini</p>
+                        </div>
+                        <img id="image-preview" class="hidden absolute inset-0 w-full h-full object-cover rounded-xl" alt="Preview">
+                    </div>
+                </div>
+
+                <!-- Product Description -->
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-slate-300 mb-2">Nama & Deskripsi Produk</label>
+                    <textarea id="product-desc" rows="4" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder-slate-600" placeholder="Contoh: Parfum elegan dengan aroma woody dan citrus, cocok untuk pria maskulin..."></textarea>
+                </div>
+
+                <!-- Generate Button -->
+                <button id="generate-btn" class="w-full bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-semibold py-3 px-4 rounded-xl shadow-lg shadow-blue-500/30 transition-all flex items-center justify-center gap-2">
+                    <i class="fas fa-magic"></i> Generate Storyboard
+                </button>
+            </div>
+        </div>
+
+        <!-- Right Column: Results -->
+        <div class="lg:col-span-2 space-y-6" id="results-container">
+            <!-- Initial State -->
+            <div id="empty-state" class="glass-panel rounded-2xl p-12 text-center h-full flex flex-col items-center justify-center">
+                <i class="fas fa-film text-6xl text-slate-600 mb-4"></i>
+                <h3 class="text-xl font-medium text-slate-300">Belum ada storyboard</h3>
+                <p class="text-slate-500 mt-2">Isi form di samping untuk mulai membuat konsep video.</p>
+            </div>
+
+            <!-- Loading State -->
+            <div id="loading-state" class="hidden glass-panel rounded-2xl p-12 text-center h-full flex flex-col items-center justify-center space-y-4">
+                <div class="loader mb-2"></div>
+                <h3 class="text-lg font-medium text-blue-400" id="loading-text">Menganalisis produk dan menyusun skenario...</h3>
+                <p class="text-sm text-slate-500">Proses ini mungkin memakan waktu hingga 1 menit.</p>
+            </div>
+
+            <!-- Generated Parts will be injected here -->
+            <div id="storyboard-list" class="space-y-6 hidden"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Notification -->
+<div id="toast" class="fixed bottom-4 right-4 bg-slate-800 border border-slate-700 text-white px-4 py-3 rounded-lg shadow-xl transform transition-transform translate-y-20 opacity-0 flex items-center gap-3 z-50">
+    <i id="toast-icon" class="fas fa-info-circle text-blue-400"></i>
+    <span id="toast-msg" class="text-sm font-medium">Message</span>
+</div>
+
+<script>
+    // Konfigurasi API (API Key kosong agar Canvas menanganinya secara otomatis)
+    const API_KEY = ""; 
+    const TEXT_MODEL_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${API_KEY}`;
+    const IMAGE_MODEL_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image:generateContent?key=${API_KEY}`;
+
+    // State Elements
+    const imageUpload = document.getElementById('image-upload');
+    const imagePreview = document.getElementById('image-preview');
+    const uploadPlaceholder = document.getElementById('upload-placeholder');
+    const productDescInput = document.getElementById('product-desc');
+    const generateBtn = document.getElementById('generate-btn');
+    
+    const emptyState = document.getElementById('empty-state');
+    const loadingState = document.getElementById('loading-state');
+    const storyboardList = document.getElementById('storyboard-list');
+    const loadingText = document.getElementById('loading-text');
+
+    let base64Image = null;
+    let mimeType = null;
+
+    // Toast Notification System
+    function showToast(message, type = 'info') {
+        const toast = document.getElementById('toast');
+        const toastMsg = document.getElementById('toast-msg');
+        const toastIcon = document.getElementById('toast-icon');
+        
+        toastMsg.textContent = message;
+        if(type === 'error') {
+            toastIcon.className = 'fas fa-exclamation-circle text-red-400';
+            toast.classList.replace('bg-slate-800', 'bg-red-900');
+        } else if (type === 'success') {
+            toastIcon.className = 'fas fa-check-circle text-emerald-400';
+            toast.classList.replace('bg-slate-800', 'bg-emerald-900');
+        } else {
+            toastIcon.className = 'fas fa-info-circle text-blue-400';
+        }
+
+        toast.classList.remove('translate-y-20', 'opacity-0');
+        
+        setTimeout(() => {
+            toast.classList.add('translate-y-20', 'opacity-0');
+            // reset bg class after hide
+            setTimeout(() => {
+                toast.classList.remove('bg-red-900', 'bg-emerald-900');
+                toast.classList.add('bg-slate-800');
+            }, 300);
+        }, 3000);
+    }
+
+    // Copy to Clipboard Fallback
+    function copyToClipboard(text, btnElement) {
+        try {
+            // Create temporary textarea
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            
+            // Visual feedback
+            const originalHTML = btnElement.innerHTML;
+            btnElement.innerHTML = '<i class="fas fa-check"></i> Disalin';
+            btnElement.classList.replace('text-slate-400', 'text-emerald-400');
+            
+            setTimeout(() => {
+                btnElement.innerHTML = originalHTML;
+                btnElement.classList.replace('text-emerald-400', 'text-slate-400');
+            }, 2000);
+            
+            showToast('Prompt berhasil disalin!', 'success');
+        } catch (err) {
+            showToast('Gagal menyalin prompt.', 'error');
+        }
+    }
+
+    imageUpload.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        mimeType = file.type;
+        const reader = new FileReader();
+        
+        reader.onload = function(event) {
+            const result = event.target.result;
+            imagePreview.src = result;
+            imagePreview.classList.remove('hidden');
+            uploadPlaceholder.classList.add('hidden');
+            
+            // Extract base64 data (remove data:image/...;base64,)
+            base64Image = result.split(',')[1];
+        };
+        
+        reader.readAsDataURL(file);
+    });
+
+    // Helper untuk exponetial backoff API Fetch
+    const fetchWithRetry = async (url, options, maxRetries = 3) => {
+        for (let i = 0; i < maxRetries; i++) {
+            try {
+                const response = await fetch(url, options);
+                if (!response.ok) {
+                    if (response.status === 429) {
+                        const delay = Math.pow(2, i) * 1000 + Math.random() * 1000;
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        continue;
+                    }
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return await response.json();
+            } catch (e) {
+                if (i === maxRetries - 1) throw e;
+                await new Promise(resolve => setTimeout(resolve, 2000));
+            }
+        }
+    };
+
+    async function generateStoryboardJSON(productDesc, imageData, mimeType) {
+        const systemPrompt = `Anda adalah seorang sutradara komersial kelas dunia dan ahli storyboard. 
+Tugas Anda adalah membuat skenario iklan video berdurasi 30 detik yang dibagi menjadi tepat 3 bagian (masing-masing 10 detik).
+Fokus pada sinematografi yang sangat realistis (hyper-realistic).
+
+Berikan output dalam format JSON ARRAY berisi 3 objek. Setiap objek harus memiliki struktur:
+- part: (Nomor urut, misal 1, 2, 3)
+- duration: (Durasi, misal "0-10s")
+- sceneDescription: (Deskripsi adegan yang terjadi)
+- cameraDetails: (Sudut kamera, lensa, pencahayaan, pergerakan kamera secara teknis)
+- videoPrompt: (Prompt bahasa Inggris yang sangat detail untuk model AI Video seperti Sora/Veo. Harus mencakup subjek, pergerakan, pencahayaan, kualitas 8k, photorealistic)
+- imagePrompt: (Prompt bahasa Inggris untuk model AI Image untuk membuat 1 frame storyboard realistis dari adegan tersebut. Tanpa teks, fokus ke visual sinematik)`;
+
+        const payload = {
+            contents: [
+                {
+                    role: "user",
+                    parts: [
+                        { text: systemPrompt + "\n\nDeskripsi Produk: " + productDesc },
+                        {
+                            inlineData: {
+                                mimeType: mimeType,
+                                data: imageData
+                            }
+                        }
+                    ]
+                }
+            ],
+            generationConfig: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: "ARRAY",
+                    items: {
+                        type: "OBJECT",
+                        properties: {
+                            part: { type: "INTEGER" },
+                            duration: { type: "STRING" },
+                            sceneDescription: { type: "STRING" },
+                            cameraDetails: { type: "STRING" },
+                            videoPrompt: { type: "STRING" },
+                            imagePrompt: { type: "STRING" }
+                        },
+                        required: ["part", "duration", "sceneDescription", "cameraDetails", "videoPrompt", "imagePrompt"]
+                    }
+                }
+            }
+        };
+
+        const result = await fetchWithRetry(TEXT_MODEL_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (result.candidates && result.candidates.length > 0) {
+            const jsonText = result.candidates[0].content.parts[0].text;
+            return JSON.parse(jsonText);
+        } else {
+            throw new Error("Gagal mendapatkan respons teks dari AI.");
+        }
+    }
+
+    async function generateImageBase64(prompt) {
+        const payload = {
+            contents: [{
+                parts: [{ text: prompt + " Cinematic lighting, 8k resolution, highly detailed, photorealistic, professional commercial photography, masterpiece." }]
+            }],
+            generationConfig: {
+                responseModalities: ['IMAGE'],
+                imageConfig: { aspectRatio: "16:9" }
+            }
+        };
+
+        const result = await fetchWithRetry(IMAGE_MODEL_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        const part = result?.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+        if (part) {
+            return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+        } else {
+            throw new Error("Gagal menghasilkan gambar.");
+        }
+    }
+
+    function renderStoryboardPart(data, imageUrl) {
+        const partEl = document.createElement('div');
+        partEl.className = 'glass-panel rounded-2xl overflow-hidden shadow-lg';
+        
+        partEl.innerHTML = `
+            <div class="flex flex-col md:flex-row">
+                <!-- Image Section -->
+                <div class="md:w-5/12 relative bg-black">
+                    <img src="${imageUrl}" alt="Storyboard Part ${data.part}" class="w-full h-full object-cover min-h-[250px]">
+                    <div class="absolute top-3 left-3 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full text-xs font-semibold border border-white/20">
+                        Part ${data.part} • ${data.duration}
+                    </div>
+                </div>
+                
+                <!-- Content Section -->
+                <div class="p-6 md:w-7/12 flex flex-col justify-between">
+                    <div>
+                        <h4 class="text-lg font-bold text-white mb-2"><i class="fas fa-clapperboard text-blue-400 mr-2"></i>Skenario</h4>
+                        <p class="text-sm text-slate-300 mb-4">${data.sceneDescription}</p>
+                        
+                        <h4 class="text-sm font-bold text-white mb-1"><i class="fas fa-video text-emerald-400 mr-2"></i>Detail Kamera</h4>
+                        <p class="text-sm text-slate-400 mb-6 bg-slate-900/50 p-3 rounded-lg border border-slate-700">${data.cameraDetails}</p>
+                    </div>
+                    
+                    <!-- Video Prompt Box -->
+                    <div class="bg-slate-900 rounded-xl border border-slate-700 p-4 relative group">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-xs font-semibold text-blue-400 uppercase tracking-wider">Video AI Prompt (Veo/Sora)</span>
+                            <button onclick="copyToClipboard(this.nextElementSibling.textContent, this)" class="text-slate-400 hover:text-white transition-colors text-xs flex items-center gap-1" title="Copy Prompt">
+                                <i class="far fa-copy"></i> Copy
+                            </button>
+                            <span class="hidden prompt-text">${data.videoPrompt}</span>
+                        </div>
+                        <p class="text-xs text-slate-300 font-mono overflow-y-auto max-h-24 leading-relaxed">${data.videoPrompt}</p>
+                    </div>
+                </div>
+            </div>
+        `;
+        return partEl;
+    }
+
+    generateBtn.addEventListener('click', async () => {
+        if (!base64Image) {
+            showToast('Mohon unggah foto produk terlebih dahulu.', 'error');
+            return;
+        }
+
+        const productDesc = productDescInput.value.trim() || "Produk sesuai dengan gambar yang diunggah.";
+
+        // UI Transitions
+        emptyState.classList.add('hidden');
+        storyboardList.classList.add('hidden');
+        storyboardList.innerHTML = ''; // Clear previous
+        loadingState.classList.remove('hidden');
+        generateBtn.disabled = true;
+        generateBtn.classList.add('opacity-50', 'cursor-not-allowed');
+
+        try {
+            // Step 1: Generate Text/JSON Storyboard
+            loadingText.textContent = "AI sedang merancang skenario 30 detik...";
+            const storyboardData = await generateStoryboardJSON(productDesc, base64Image, mimeType);
+            
+            if (!Array.isArray(storyboardData) || storyboardData.length !== 3) {
+                throw new Error("Format data dari AI tidak sesuai (harus 3 bagian).");
+            }
+
+            // Step 2: Generate Images
+            loadingText.textContent = "Menggambar visual storyboard yang realistis (1/3)...";
+            
+            // Memproses gambar secara sekuensial agar tidak terkena limit rate yang ketat
+            for (let i = 0; i < storyboardData.length; i++) {
+                const partData = storyboardData[i];
+                loadingText.textContent = `Merender visual storyboard realistis (${i + 1}/3)...`;
+                
+                let imageUrl = "https://placehold.co/1920x1080/1e293b/3b82f6?text=Image+Generation+Failed";
+                try {
+                    imageUrl = await generateImageBase64(partData.imagePrompt);
+                } catch (imgError) {
+                    console.error("Image generation error for part " + (i+1), imgError);
+                }
+
+                // Render ke DOM
+                const partElement = renderStoryboardPart(partData, imageUrl);
+                storyboardList.appendChild(partElement);
+            }
+
+            // Step 3: Show Results
+            loadingState.classList.add('hidden');
+            storyboardList.classList.remove('hidden');
+            showToast('Storyboard berhasil di-generate!', 'success');
+
+        } catch (error) {
+            console.error(error);
+            showToast('Terjadi kesalahan: ' + error.message, 'error');
+            loadingState.classList.add('hidden');
+            emptyState.classList.remove('hidden');
+        } finally {
+            generateBtn.disabled = false;
+            generateBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+    });
+
+</script>
+</body>
+</html>
