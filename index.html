@@ -278,8 +278,8 @@
 
     <script>
         // --- Core Configuration ---
-        const flashModel = "gemini-3-flash-preview";
-        const imageModel = "gemini-3.1-flash-image"; // For realistic image generation
+        const flashModel = "gemini-1.5-flash"; // Diperbaiki ke model stabil yang tersedia
+        const imageModel = "gemini-1.5-pro"; // Diperbaiki ke model stabil untuk fallback
         
         // --- DOM Elements ---
         const form = document.getElementById('generator-form');
@@ -558,8 +558,10 @@
                     });
                     
                     if (!response.ok) {
+                        const errorDetails = await response.text();
+                        console.error("API Error Details:", errorDetails);
                         if (response.status === 400 || response.status === 403) {
-                             throw new Error("API Key tidak valid atau kosong. Harap isi form API Key dengan benar.");
+                             throw new Error("API Key tidak valid atau format permintaan ditolak. Harap periksa API Key.");
                         }
                         throw new Error(`API Error: ${response.status}`);
                     }
@@ -810,7 +812,7 @@
                 loadingState.classList.replace('flex', 'hidden');
                 form.parentElement.classList.remove('hidden');
                 
-                let errorMsg = "Terjadi kesalahan sistem. Pastikan file valid dan coba lagi.";
+                let errorMsg = "Terjadi kesalahan sistem: " + error.message;
                 if (error.message.includes("API Key")) {
                     errorMsg = error.message;
                 } else if (error.message.includes("Failed to fetch")) {
