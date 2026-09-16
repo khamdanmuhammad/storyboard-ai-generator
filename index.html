@@ -1,1198 +1,761 @@
 <!DOCTYPE html>
-<html lang="id" class="dark">
+<html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Affiliate Storyboard & Video Prompt Generator</title>
-    <!-- Tailwind CSS -->
+    <title>AI Video Storyboard & Prompt Generator</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        brand: {
-                            50: '#eef2ff',
-                            100: '#e0e7ff',
-                            500: '#6366f1',
-                            600: '#4f46e5',
-                            700: '#4338ca',
-                            900: '#312e81',
-                        },
-                        darkbg: '#0b0f17',
-                        cardbg: '#161e2e',
-                        bordercolor: '#26334d'
-                    },
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif']
-                    }
-                }
-            }
-        }
-    </script>
-    <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <!-- FontAwesome Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- html2pdf for export -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #0b0f17; color: #f3f4f6; }
-        .glass-panel { background: rgba(22, 30, 46, 0.85); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); }
-        .gradient-border { border: 1px solid transparent; background-image: linear-gradient(#161e2e, #161e2e), linear-gradient(135deg, #6366f1, #ec4899); background-origin: border-box; background-clip: padding-box, border-box; }
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: #0b0f17; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #26334d; border-radius: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #4f46e5; }
-        .shimmer { background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.05) 50%, rgba(255,255,255,0) 100%); background-size: 200% 100%; animation: shimmer 2s infinite; }
-        @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a; /* Slate 900 */
+            color: #f8fafc; /* Slate 50 */
+        }
+        
+        /* Custom Scrollbar for the table container */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #1e293b; 
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #475569; 
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #64748b; 
+        }
+
+        /* Storyboard Table Styles */
+        .storyboard-table {
+            border-collapse: separate;
+            border-spacing: 0;
+            width: 100%;
+            min-width: 1000px;
+        }
+        .storyboard-table th, .storyboard-table td {
+            border: 1px solid #334155;
+            padding: 12px;
+            text-align: center;
+            vertical-align: middle;
+        }
+        .storyboard-table th {
+            background-color: #1e293b;
+            color: #cbd5e1;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .part-header {
+            background: linear-gradient(90deg, #78350f 0%, #b45309 50%, #78350f 100%);
+            color: #fef3c7;
+            font-weight: bold;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        
+        .loader {
+            border: 3px solid #334155;
+            border-bottom-color: #fbbf24;
+            border-radius: 50%;
+            display: inline-block;
+            box-sizing: border-box;
+            animation: rotation 1s linear infinite;
+        }
+
+        @keyframes rotation {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .image-shimmer {
+            background: #1e293b;
+            background-image: linear-gradient(to right, #1e293b 0%, #334155 20%, #1e293b 40%, #1e293b 100%);
+            background-repeat: no-repeat;
+            background-size: 800px 100%; 
+            animation-duration: 1.5s;
+            animation-fill-mode: forwards; 
+            animation-iteration-count: infinite;
+            animation-name: placeholderShimmer;
+            animation-timing-function: linear;
+        }
+        
+        @keyframes placeholderShimmer {
+            0% { background-position: -468px 0; }
+            100% { background-position: 468px 0; }
+        }
+        
+        /* Toast Notification */
+        #toast-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 50;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .toast {
+            background-color: #1e293b;
+            border-left: 4px solid #fbbf24;
+            color: white;
+            padding: 16px;
+            border-radius: 4px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        .toast.show {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        .toast.error {
+            border-left-color: #ef4444;
+        }
     </style>
 </head>
-<body class="min-h-screen text-gray-100 bg-darkbg flex flex-col custom-scrollbar">
+<body class="min-h-screen flex flex-col">
 
-    <header class="sticky top-0 z-50 glass-panel border-b border-bordercolor px-4 lg:px-8 py-3.5 flex items-center justify-between">
-        <div class="flex items-center space-x-3">
-            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-500 flex items-center justify-center shadow-lg shadow-indigo-500/30">
-                <i class="fa-solid fa-clapperboard text-white text-lg"></i>
-            </div>
+    <header class="bg-slate-900 border-b border-slate-800 py-6 px-8 sticky top-0 z-40 shadow-md">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
             <div>
-                <h1 class="text-lg font-bold tracking-wide bg-gradient-to-r from-white via-indigo-200 to-indigo-400 bg-clip-text text-transparent">
-                    Affiliate Studio AI <span class="text-xs font-normal text-indigo-400 border border-indigo-500/30 px-2 py-0.5 rounded-full ml-1">Flow AI Ready</span>
+                <h1 class="text-2xl font-bold bg-gradient-to-r from-yellow-400 to-amber-600 bg-clip-text text-transparent flex items-center gap-2">
+                    <i class="fa-solid fa-film text-amber-500"></i>
+                    FlowGen AI
                 </h1>
-                <p class="text-xs text-gray-400">Storyboard Generator & Google Flow AI Video Prompts (30 Detik Seamless)</p>
+                <p class="text-slate-400 text-sm mt-1">Video Storyboard & Prompts Generator (30 Detik)</p>
             </div>
-        </div>
-
-        <div class="flex items-center space-x-3">
-            <button onclick="openApiKeyModal()" class="text-xs px-3 py-2 rounded-lg bg-cardbg hover:bg-slate-800 border border-bordercolor text-gray-300 flex items-center space-x-2 transition">
-                <i class="fa-solid fa-key text-amber-400"></i>
-                <span id="apiKeyStatus">API Key: Automatic</span>
-            </button>
-            <button onclick="resetAll()" class="text-xs px-3 py-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 flex items-center space-x-1.5 transition">
-                <i class="fa-solid fa-rotate-left"></i>
-                <span class="hidden sm:inline">Reset</span>
-            </button>
+            <div class="flex items-center gap-3">
+                <span class="px-3 py-1 bg-slate-800 text-xs rounded-full border border-slate-700 text-slate-300">
+                    <i class="fa-solid fa-check-circle text-green-400 mr-1"></i> Sistem Anti-Error
+                </span>
+            </div>
         </div>
     </header>
 
-    <!-- Main Workspace Container -->
-    <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 lg:p-8 space-y-8">
-
-        <section class="glass-panel rounded-2xl p-4 border border-bordercolor flex flex-wrap items-center justify-between gap-4">
-            <div class="flex items-center space-x-2 text-sm text-gray-300">
-                <i class="fa-solid fa-wand-magic-sparkles text-indigo-400"></i>
-                <span class="font-medium">Preset Kategori Produk Quick-Start:</span>
-            </div>
-            <div class="flex flex-wrap gap-2">
-                <button onclick="loadPreset('skincare')" class="text-xs px-3 py-1.5 rounded-lg bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/20 transition">
-                    <i class="fa-solid fa-pump-soap mr-1"></i> Skincare / Kecantikan
-                </button>
-                <button onclick="loadPreset('gadget')" class="text-xs px-3 py-1.5 rounded-lg bg-blue-500/10 border border-blue-500/30 text-blue-300 hover:bg-blue-500/20 transition">
-                    <i class="fa-solid fa-mobile-screen mr-1"></i> Elektronik / Gadget
-                </button>
-                <button onclick="loadPreset('fashion')" class="text-xs px-3 py-1.5 rounded-lg bg-pink-500/10 border border-pink-500/30 text-pink-300 hover:bg-pink-500/20 transition">
-                    <i class="fa-solid fa-shirt mr-1"></i> Fashion & Apparel
-                </button>
-                <button onclick="loadPreset('food')" class="text-xs px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 hover:bg-amber-500/20 transition">
-                    <i class="fa-solid fa-utensils mr-1"></i> Makanan / Minuman
-                </button>
-            </div>
-        </section>
-
-        <section class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            <!-- Left Panel: Product Upload & Analysis (5 cols) -->
-            <div class="lg:col-span-5 space-y-6">
-                <div class="glass-panel rounded-2xl p-6 border border-bordercolor space-y-5">
-                    <div class="flex items-center justify-between border-b border-bordercolor pb-3">
-                        <h2 class="text-base font-bold text-white flex items-center gap-2">
-                            <span class="w-6 h-6 rounded-md bg-indigo-600 text-white text-xs flex items-center justify-center">1</span>
-                            Upload Product Reference
-                        </h2>
-                        <span class="text-xs text-indigo-400 font-mono">Source of Truth</span>
-                    </div>
-
-                    <!-- Upload Box -->
-                    <div id="dropZone" onclick="document.getElementById('productImageInput').click()" 
-                        class="border-2 border-dashed border-bordercolor hover:border-indigo-500 rounded-xl p-6 text-center cursor-pointer transition bg-darkbg/50 hover:bg-indigo-950/20 group relative overflow-hidden">
-                        <input type="file" id="productImageInput" accept="image/*" class="hidden" onchange="handleImageUpload(event)">
-                        
-                        <div id="uploadPlaceholder" class="space-y-3 py-4">
-                            <div class="w-16 h-16 mx-auto rounded-full bg-indigo-500/10 group-hover:bg-indigo-500/20 flex items-center justify-center transition">
-                                <i class="fa-solid fa-cloud-arrow-up text-2xl text-indigo-400"></i>
-                            </div>
-                            <div>
-                                <p class="text-sm font-semibold text-gray-200">Klik atau Drag Foto Produk di Sini</p>
-                                <p class="text-xs text-gray-400 mt-1">Format PNG, JPG, WEBP (Max 10MB)</p>
-                            </div>
-                        </div>
-
-                        <!-- Image Preview Container -->
-                        <div id="imagePreviewContainer" class="hidden relative rounded-lg overflow-hidden group">
-                            <img id="imagePreview" src="" class="w-full h-64 object-contain bg-black/40 rounded-lg">
-                            <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition flex items-center justify-center space-x-3">
-                                <button onclick="event.stopPropagation(); document.getElementById('productImageInput').click()" class="p-2 bg-indigo-600 text-white rounded-lg text-xs hover:bg-indigo-500">
-                                    <i class="fa-solid fa-pen"></i> Ganti
-                                </button>
-                                <button onclick="event.stopPropagation(); removeProductImage()" class="p-2 bg-red-600 text-white rounded-lg text-xs hover:bg-red-500">
-                                    <i class="fa-solid fa-trash"></i> Hapus
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Vision AI Auto Detect Button -->
-                    <button id="analyzeBtn" onclick="analyzeProductVision()" disabled class="w-full py-2.5 px-4 rounded-xl bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 font-medium text-xs flex items-center justify-center space-x-2 opacity-50 cursor-not-allowed transition hover:bg-indigo-600 hover:text-white">
-                        <i class="fa-solid fa-eye"></i>
-                        <span>Auto-Detect Detail Produk via Gemini Vision</span>
-                    </button>
-
-                    <!-- Product Details Form -->
-                    <div class="space-y-4 pt-2">
-                        <div>
-                            <label class="block text-xs font-semibold text-gray-300 mb-1">Nama Produk & Merek</label>
-                            <input type="text" id="productName" placeholder="Contoh: Sonik Scents Skin Nice Body Toner 200ml" class="w-full px-3.5 py-2.5 rounded-xl bg-darkbg border border-bordercolor focus:border-indigo-500 text-sm text-white placeholder-gray-500 focus:outline-none transition">
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-3">
-                            <div>
-                                <label class="block text-xs font-semibold text-gray-300 mb-1">Kategori Produk</label>
-                                <select id="productCategory" class="w-full px-3.5 py-2.5 rounded-xl bg-darkbg border border-bordercolor focus:border-indigo-500 text-sm text-white focus:outline-none transition">
-                                    <option value="Skincare & Beauty">Skincare & Beauty</option>
-                                    <option value="Gadgets & Tech">Gadgets & Tech</option>
-                                    <option value="Fashion & Accessories">Fashion & Accessories</option>
-                                    <option value="Food & Beverage">Food & Beverage</option>
-                                    <option value="Home & Household">Home & Household</option>
-                                    <option value="General Product">Lainnya / Umum</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-semibold text-gray-300 mb-1">Target Model / Talenta</label>
-                                <select id="modelAvatar" class="w-full px-3.5 py-2.5 rounded-xl bg-darkbg border border-bordercolor focus:border-indigo-500 text-sm text-white focus:outline-none transition">
-                                    <option value="Pria Muda 20-25th, Ganteng Natural, Clean & Energetik">Pria Muda (20-25th) Natural</option>
-                                    <option value="Wanita Muda 20-25th, Glowing Natural, Trendy">Wanita Muda (20-25th) Glowing</option>
-                                    <option value="Pria Dewasa 28-35th, Profesional & Smart">Pria Dewasa (28-35th)</option>
-                                    <option value="Wanita Hijab 22-28th, Elegat & Warm">Wanita Hijab (22-28th)</option>
-                                    <option value="Tanpa Model Wajah (Focus Hands & Product Only)">Tangan Saja (Hands-Only Demo)</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-semibold text-gray-300 mb-1">Keunggulan & Manfaat Utama (Dipisah Koma)</label>
-                            <textarea id="productFeatures" rows="2" placeholder="Contoh: Mencerahkan kulit, melembabkan, merawat skin barrier, bahan kelas atas" class="w-full px-3.5 py-2 rounded-xl bg-darkbg border border-bordercolor focus:border-indigo-500 text-xs text-white placeholder-gray-500 focus:outline-none transition"></textarea>
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-3">
-                            <div>
-                                <label class="block text-xs font-semibold text-gray-300 mb-1">Rating Review Storyboard</label>
-                                <input type="text" id="productRating" value="9/10 - Highly Recommended!" class="w-full px-3.5 py-2 rounded-xl bg-darkbg border border-bordercolor text-xs text-white focus:outline-none">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-semibold text-gray-300 mb-1">Teks CTA / Promo</label>
-                                <input type="text" id="productCTA" value="KLIK LINK DI DESKRIPSI!" class="w-full px-3.5 py-2 rounded-xl bg-darkbg border border-bordercolor text-xs text-white focus:outline-none">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Right Panel: Generator Settings & Action (7 cols) -->
-            <div class="lg:col-span-7 space-y-6">
-                <div class="glass-panel rounded-2xl p-6 border border-bordercolor space-y-6 flex flex-col justify-between h-full">
-                    <div class="space-y-5">
-                        <div class="flex items-center justify-between border-b border-bordercolor pb-3">
-                            <h2 class="text-base font-bold text-white flex items-center gap-2">
-                                <span class="w-6 h-6 rounded-md bg-indigo-600 text-white text-xs flex items-center justify-center">2</span>
-                                Konfigurasi Storyboard & Flow AI
-                            </h2>
-                            <span class="text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-1 rounded-full font-medium">
-                                <i class="fa-solid fa-shield-halved mr-1"></i> Anti-Error & Realistic Mode
-                            </span>
-                        </div>
-
-                        <!-- 3 Part Breakdown Info Card -->
-                        <div class="grid grid-cols-3 gap-3">
-                            <div class="p-3 rounded-xl bg-indigo-950/30 border border-indigo-500/20 space-y-1">
-                                <div class="text-indigo-400 font-bold text-xs">PART 1 (0-10s)</div>
-                                <div class="text-[11px] text-gray-300 font-semibold">Hook & Product Reveal</div>
-                                <p class="text-[10px] text-gray-400">0-2s Hook, 2-5s Unboxing, 8-10s Hero Reveal.</p>
-                            </div>
-                            <div class="p-3 rounded-xl bg-purple-950/30 border border-purple-500/20 space-y-1">
-                                <div class="text-purple-400 font-bold text-xs">PART 2 (10-20s)</div>
-                                <div class="text-[11px] text-gray-300 font-semibold">Review & Texture Demo</div>
-                                <p class="text-[10px] text-gray-400">Close-up detail, demo penggunaan & benefit badges.</p>
-                            </div>
-                            <div class="p-3 rounded-xl bg-pink-950/30 border border-pink-500/20 space-y-1">
-                                <div class="text-pink-400 font-bold text-xs">PART 3 (20-30s)</div>
-                                <div class="text-[11px] text-gray-300 font-semibold">Lifestyle & High CTA</div>
-                                <p class="text-[10px] text-gray-400">Model + Produk, Overall score & Link di deskripsi.</p>
-                            </div>
-                        </div>
-
-                        <!-- Realism & Tone Options -->
-                        <div class="space-y-3">
-                            <label class="block text-xs font-semibold text-gray-300">Gaya Sinematik & Visual Realistis</label>
-                            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                                <label class="flex items-center p-2.5 rounded-xl border border-bordercolor bg-darkbg hover:border-indigo-500/50 cursor-pointer text-xs space-x-2">
-                                    <input type="radio" name="visualStyle" value="hyperrealistic commercial" checked class="text-indigo-600">
-                                    <span>Commercial Studio 4K</span>
-                                </label>
-                                <label class="flex items-center p-2.5 rounded-xl border border-bordercolor bg-darkbg hover:border-indigo-500/50 cursor-pointer text-xs space-x-2">
-                                    <input type="radio" name="visualStyle" value="authentic UGC viral video style" class="text-indigo-600">
-                                    <span>UGC Viral Aesthetic</span>
-                                </label>
-                                <label class="flex items-center p-2.5 rounded-xl border border-bordercolor bg-darkbg hover:border-indigo-500/50 cursor-pointer text-xs space-x-2">
-                                    <input type="radio" name="visualStyle" value="clean luxury minimalist studio lighting" class="text-indigo-600">
-                                    <span>Minimalist Luxury</span>
-                                </label>
-                            </div>
-                        </div>
-
-                        <!-- Voiceover Language & Tone -->
-                        <div class="grid grid-cols-2 gap-3">
-                            <div>
-                                <label class="block text-xs font-semibold text-gray-300 mb-1">Gaya Bahasa Voiceover</label>
-                                <select id="voiceTone" class="w-full px-3 py-2 rounded-xl bg-darkbg border border-bordercolor text-xs text-white focus:outline-none">
-                                    <option value="Kasual santai, antusias, conversational Indonesian">Kasual Santai & Antusias (Rekomendasi TikTok)</option>
-                                    <option value="Informatif, terpercaya, reviewer profesional">Reviewer Profesional & Informatif</option>
-                                    <option value="Persuasif, soft-selling, friendly">Soft Selling & Friendly</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-semibold text-gray-300 mb-1">Rasio Aspek AI Video</label>
-                                <select id="aspectRatio" class="w-full px-3 py-2 rounded-xl bg-darkbg border border-bordercolor text-xs text-white focus:outline-none">
-                                    <option value="9:16">9:16 Vertical (TikTok / Reels / Shorts / Shopee Video)</option>
-                                    <option value="16:9">16:9 Landscape (YouTube)</option>
-                                    <option value="1:1">1:1 Square (Feed Instagram)</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Generate Button -->
-                    <div class="pt-4 border-t border-bordercolor space-y-3">
-                        <button id="generateBtn" onclick="generateFullStoryboard()" class="w-full py-4 px-6 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 text-white font-bold text-sm shadow-xl shadow-indigo-600/30 flex items-center justify-center space-x-3 transition transform active:scale-95">
-                            <i class="fa-solid fa-wand-magic-sparkles text-lg"></i>
-                            <span>GENERATE FOTO STORYBOARD & PROMPT FLOW AI</span>
-                        </button>
-                        <p class="text-[11px] text-gray-400 text-center">
-                            <i class="fa-solid fa-circle-check text-emerald-400 mr-1"></i> Mendukung Google Flow AI, Google Veo, Luma Dream Machine, Runway Gen-3 & Sora.
-                        </p>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Progress / Loading Banner -->
-        <section id="loadingSection" class="hidden glass-panel rounded-2xl p-8 border border-indigo-500/40 text-center space-y-4 shimmer">
-            <div class="w-16 h-16 mx-auto rounded-full bg-indigo-600/20 flex items-center justify-center animate-spin">
-                <i class="fa-solid fa-spinner text-3xl text-indigo-400"></i>
-            </div>
-            <div class="space-y-1">
-                <h3 id="loadingTitle" class="text-base font-bold text-white">Sedang Memproses Storyboard & AI Video Prompt...</h3>
-                <p id="loadingStatus text-xs" class="text-xs text-indigo-300">Menganalisis kontinuitas kamera, visual model, dan skrip voiceover...</p>
-            </div>
-            <div class="w-full max-w-md mx-auto bg-darkbg rounded-full h-2 overflow-hidden border border-bordercolor">
-                <div id="progressBar" class="bg-gradient-to-r from-indigo-500 to-pink-500 h-full w-10 transition-all duration-300"></div>
-            </div>
-        </section>
-
-        <!-- Output Results Workspace -->
-        <section id="outputSection" class="hidden space-y-8">
-
-            <!-- Section Title & Action Header -->
-            <div class="glass-panel rounded-2xl p-6 border border-bordercolor flex flex-wrap items-center justify-between gap-4">
+    <main class="flex-grow max-w-7xl mx-auto w-full p-4 md:p-8 grid grid-cols-1 gap-8">
+        
+        <section class="bg-slate-800 rounded-xl p-6 shadow-lg border border-slate-700 w-full max-w-3xl mx-auto">
+            <h2 class="text-xl font-semibold mb-6 flex items-center gap-2">
+                <i class="fa-solid fa-upload text-blue-400"></i> Setup Produk & Referensi
+            </h2>
+            
+            <form id="generator-form" class="space-y-6">
+                <!-- Image Upload -->
                 <div>
-                    <h2 class="text-lg font-bold text-white flex items-center gap-2">
-                        <i class="fa-solid fa-film text-indigo-400"></i>
-                        Hasil Output Storyboard & Prompt Video 30 Detik
-                    </h2>
-                    <p class="text-xs text-gray-400">Lengkap dengan foto visual model + produk, detail kamera, voiceover, dan prompt Google Flow AI.</p>
+                    <label class="block text-sm font-medium text-slate-300 mb-2">Upload Foto Produk (Wajib)</label>
+                    <div class="flex items-center justify-center w-full">
+                        <label for="product-image" class="flex flex-col items-center justify-center w-full h-48 border-2 border-slate-600 border-dashed rounded-lg cursor-pointer bg-slate-700/50 hover:bg-slate-700 transition duration-300 relative overflow-hidden group">
+                            <div id="upload-placeholder" class="flex flex-col items-center justify-center pt-5 pb-6">
+                                <i class="fa-solid fa-cloud-arrow-up text-4xl text-slate-400 mb-3 group-hover:text-blue-400 transition-colors"></i>
+                                <p class="mb-2 text-sm text-slate-300"><span class="font-semibold">Klik untuk upload</span> atau drag and drop</p>
+                                <p class="text-xs text-slate-500">PNG, JPG or WEBP (Max. 5MB)</p>
+                            </div>
+                            <img id="image-preview" class="absolute inset-0 w-full h-full object-contain hidden bg-slate-900" alt="Preview">
+                            <input id="product-image" type="file" accept="image/png, image/jpeg, image/webp" class="hidden" required />
+                        </label>
+                    </div>
                 </div>
-                <div class="flex flex-wrap gap-2">
-                    <button onclick="copyAllPrompts()" class="text-xs px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium flex items-center space-x-2 transition shadow-md">
-                        <i class="fa-solid fa-copy"></i>
-                        <span>Copy Semua Prompt AI</span>
-                    </button>
-                    <button onclick="exportToPDF()" class="text-xs px-3.5 py-2 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-300 font-medium flex items-center space-x-2 transition">
-                        <i class="fa-solid fa-file-pdf"></i>
-                        <span>Export PDF Storyboard</span>
-                    </button>
-                </div>
-            </div>
 
-            <!-- Tab Switching: Storyboard Visual vs Flow AI Prompts -->
-            <div class="flex border-b border-bordercolor space-x-4">
-                <button id="tabVisualBtn" onclick="switchTab('visual')" class="pb-3 text-sm font-bold border-b-2 border-indigo-500 text-indigo-400 flex items-center space-x-2">
-                    <i class="fa-solid fa-images"></i>
-                    <span>Tampilan Foto Storyboard (Visual Cards)</span>
+                <!-- Product Details -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-300 mb-2">Nama Produk / Merek</label>
+                        <input type="text" id="product-name" required placeholder="Contoh: Jam Tangan OLEVS" class="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-300 mb-2">Kategori Produk</label>
+                        <select id="product-category" class="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition">
+                            <option value="Fashion & Aksesoris">Fashion & Aksesoris (Jam, Baju, dll)</option>
+                            <option value="Skincare & Kosmetik">Skincare & Kosmetik</option>
+                            <option value="Elektronik">Elektronik & Gadget</option>
+                            <option value="Makanan & Minuman">Makanan & Minuman</option>
+                            <option value="Lainnya">Lainnya</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-300 mb-2">Nilai Jual / Fitur Utama (Opsional)</label>
+                    <textarea id="product-features" rows="2" placeholder="Contoh: Tahan air, desain mewah, garansi 1 tahun..." class="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition resize-none"></textarea>
+                </div>
+
+                <!-- Generate Button -->
+                <button type="submit" id="btn-generate" class="w-full bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white font-bold py-3 px-6 rounded-lg shadow-lg transform transition duration-200 hover:-translate-y-1 focus:outline-none focus:ring-4 focus:ring-amber-500/50 flex justify-center items-center gap-2">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> Generate Storyboard & Prompts
                 </button>
-                <button id="tabPromptsBtn" onclick="switchTab('prompts')" class="pb-3 text-sm font-bold text-gray-400 hover:text-gray-200 border-b-2 border-transparent flex items-center space-x-2">
-                    <i class="fa-solid fa-code"></i>
-                    <span>Prompt Google Flow AI (Copy-Paste)</span>
+            </form>
+        </section>
+
+        <!-- Loading State -->
+        <section id="loading-state" class="hidden flex-col items-center justify-center py-12">
+            <div class="loader w-12 h-12 mb-4"></div>
+            <h3 class="text-xl font-semibold text-white mb-2" id="loading-title">Menganalisis Produk...</h3>
+            <p class="text-slate-400 text-center max-w-md" id="loading-desc">AI sedang menyusun konsep video 30 detik yang menarik. Proses ini membutuhkan waktu beberapa detik.</p>
+        </section>
+
+        <!-- Results Section -->
+        <section id="results-section" class="hidden space-y-8 animate-fade-in">
+            
+            <!-- Tabs -->
+            <div class="flex border-b border-slate-700">
+                <button id="tab-storyboard" class="px-6 py-3 text-amber-500 border-b-2 border-amber-500 font-medium transition focus:outline-none flex items-center gap-2">
+                    <i class="fa-solid fa-table-cells"></i> Visual Storyboard
+                </button>
+                <button id="tab-prompts" class="px-6 py-3 text-slate-400 hover:text-white font-medium transition focus:outline-none flex items-center gap-2">
+                    <i class="fa-solid fa-file-lines"></i> Google Flow AI Prompts
                 </button>
             </div>
 
-            <!-- TAB 1: Visual Storyboard Cards Grid (Exact Style Reference as e-book / skincare.png) -->
-            <div id="visualTabContent" class="space-y-6">
-                <div id="storyboardPrintable" class="grid grid-cols-1 md:grid-cols-3 gap-6">
-
-                    <!-- PART 1 CARD -->
-                    <div class="glass-panel rounded-2xl overflow-hidden border border-bordercolor flex flex-col justify-between hover:border-indigo-500/50 transition">
-                        <!-- Top Header Badge -->
-                        <div class="p-3 bg-gradient-to-r from-red-600 to-red-500 text-white flex items-center justify-between">
-                            <span class="font-bold text-xs uppercase tracking-wider">PART 1 • 0–10s</span>
-                            <span class="text-[11px] bg-black/30 px-2 py-0.5 rounded-md font-mono">Hook & Product Reveal</span>
-                        </div>
-
-                        <!-- Main Image Preview Container (9:16 vertical styling) -->
-                        <div class="relative bg-black aspect-[9/16] overflow-hidden group">
-                            <img id="part1VisualImg" src="" class="w-full h-full object-cover transition transform group-hover:scale-105 duration-500" alt="Part 1 Visual">
-                            
-                            <!-- Overlaid Graphic Badges like Skincare Reference -->
-                            <div class="absolute top-3 right-3 bg-red-600/90 text-white text-[10px] font-bold px-2.5 py-1 rounded-lg border border-white/20 shadow-lg transform rotate-2 max-w-[120px] text-center" id="part1HookBadge">
-                                Kulit lebih cerah, bersih & sehat!
-                            </div>
-
-                            <!-- Bottom Subtitle Bar -->
-                            <div class="absolute bottom-3 left-3 right-3 bg-black/80 backdrop-blur-md p-2.5 rounded-xl border border-white/10 text-center">
-                                <p id="part1SubtitleText" class="text-[11px] text-amber-300 font-medium italic">
-                                    "Baru kali ini aku review yang beneran works."
-                                </p>
-                            </div>
-
-                            <!-- Regenerate Image Button -->
-                            <button onclick="regeneratePartImage(1)" title="Regenerate Gambar Part 1" class="absolute top-3 left-3 p-2 bg-black/60 hover:bg-indigo-600 text-white rounded-lg text-xs opacity-0 group-hover:opacity-100 transition">
-                                <i class="fa-solid fa-arrows-rotate"></i>
-                            </button>
-                        </div>
-
-                        <!-- Storyboard Details Breakdown -->
-                        <div class="p-4 space-y-3 bg-cardbg text-xs">
-                            <div class="space-y-1">
-                                <div class="text-[10px] uppercase tracking-wider text-indigo-400 font-bold">Kamera & Angle</div>
-                                <div id="part1Camera" class="text-gray-300 font-mono">35mm Lens, f/1.8, Slow Push-in, Eye Level</div>
-                            </div>
-                            <div class="space-y-1">
-                                <div class="text-[10px] uppercase tracking-wider text-indigo-400 font-bold">Deskripsi Visual Frame</div>
-                                <p id="part1VisualDesc" class="text-gray-300 leading-relaxed">Model memegang produk dengan unboxing natural, pencahayaan soft studio.</p>
-                            </div>
-                            <div class="space-y-1 bg-darkbg p-2.5 rounded-xl border border-bordercolor">
-                                <div class="text-[10px] uppercase tracking-wider text-amber-400 font-bold">Voiceover Indonesia (0-10s)</div>
-                                <p id="part1VO" class="text-gray-200 italic font-serif">"Guys, akhir-akhir ini banyak yang nanya rahasia kulit segar..."</p>
-                            </div>
-                        </div>
+            <!-- Storyboard Content -->
+            <div id="content-storyboard" class="space-y-4">
+                <div class="flex justify-between items-end">
+                    <div>
+                        <h2 class="text-2xl font-bold uppercase tracking-wide text-white flex items-center gap-2">
+                            <span class="text-amber-500">STORYBOARD VIDEO 30 DETIK</span> – <span id="display-product-name">PRODUK</span>
+                        </h2>
+                        <p class="text-slate-400 text-sm mt-1">Rasio: 9:16 (Vertikal) | Platform: TikTok, Reels, Shorts</p>
                     </div>
+                </div>
 
-                    <!-- PART 2 CARD -->
-                    <div class="glass-panel rounded-2xl overflow-hidden border border-bordercolor flex flex-col justify-between hover:border-indigo-500/50 transition">
-                        <!-- Top Header Badge -->
-                        <div class="p-3 bg-gradient-to-r from-red-600 to-red-500 text-white flex items-center justify-between">
-                            <span class="font-bold text-xs uppercase tracking-wider">PART 2 • 10–20s</span>
-                            <span class="text-[11px] bg-black/30 px-2 py-0.5 rounded-md font-mono">Review, Demo & Manfaat</span>
-                        </div>
-
-                        <!-- Main Image Preview Container -->
-                        <div class="relative bg-black aspect-[9/16] overflow-hidden group">
-                            <img id="part2VisualImg" src="" class="w-full h-full object-cover transition transform group-hover:scale-105 duration-500" alt="Part 2 Visual">
-
-                            <!-- Feature Badges Overlay -->
-                            <div class="absolute bottom-16 left-2 right-2 flex justify-center space-x-1.5" id="part2FeatureBadges">
-                                <span class="bg-black/75 text-white text-[9px] px-2 py-1 rounded-md border border-white/10 flex items-center gap-1">
-                                    <i class="fa-solid fa-sparkles text-amber-400"></i> Mencerahkan
-                                </span>
-                                <span class="bg-black/75 text-white text-[9px] px-2 py-1 rounded-md border border-white/10 flex items-center gap-1">
-                                    <i class="fa-solid fa-droplet text-blue-400"></i> Melembabkan
-                                </span>
-                                <span class="bg-black/75 text-white text-[9px] px-2 py-1 rounded-md border border-white/10 flex items-center gap-1">
-                                    <i class="fa-solid fa-shield text-emerald-400"></i> Skin Barrier
-                                </span>
-                            </div>
-
-                            <!-- Bottom Subtitle Bar -->
-                            <div class="absolute bottom-3 left-3 right-3 bg-black/80 backdrop-blur-md p-2.5 rounded-xl border border-white/10 text-center">
-                                <p id="part2SubtitleText" class="text-[11px] text-amber-300 font-medium italic">
-                                    "Pertama kali pegang langsung kerasa — bahan & finishingnya kelas atas."
-                                </p>
-                            </div>
-
-                            <button onclick="regeneratePartImage(2)" title="Regenerate Gambar Part 2" class="absolute top-3 left-3 p-2 bg-black/60 hover:bg-indigo-600 text-white rounded-lg text-xs opacity-0 group-hover:opacity-100 transition">
-                                <i class="fa-solid fa-arrows-rotate"></i>
-                            </button>
-                        </div>
-
-                        <!-- Storyboard Details Breakdown -->
-                        <div class="p-4 space-y-3 bg-cardbg text-xs">
-                            <div class="space-y-1">
-                                <div class="text-[10px] uppercase tracking-wider text-indigo-400 font-bold">Kamera & Angle</div>
-                                <div id="part2Camera" class="text-gray-300 font-mono">85mm Macro, f/2.8, Top-down Drop & Tilt, Close-up Detail</div>
-                            </div>
-                            <div class="space-y-1">
-                                <div class="text-[10px] uppercase tracking-wider text-indigo-400 font-bold">Deskripsi Visual Frame</div>
-                                <p id="part2VisualDesc" class="text-gray-300 leading-relaxed">Close-up tekstur produk dituangkan/diaplikasikan dengan gerakan tangan halus.</p>
-                            </div>
-                            <div class="space-y-1 bg-darkbg p-2.5 rounded-xl border border-bordercolor">
-                                <div class="text-[10px] uppercase tracking-wider text-amber-400 font-bold">Voiceover Indonesia (10-20s)</div>
-                                <p id="part2VO" class="text-gray-200 italic font-serif">"Oke, jadi ini dia produknya. Teksturnya ringan banget dan cepat meresap..."</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- PART 3 CARD -->
-                    <div class="glass-panel rounded-2xl overflow-hidden border border-bordercolor flex flex-col justify-between hover:border-indigo-500/50 transition">
-                        <!-- Top Header Badge -->
-                        <div class="p-3 bg-gradient-to-r from-red-600 to-red-500 text-white flex items-center justify-between">
-                            <span class="font-bold text-xs uppercase tracking-wider">PART 3 • 20–30s</span>
-                            <span class="text-[11px] bg-black/30 px-2 py-0.5 rounded-md font-mono">Penutup & Call to Action</span>
-                        </div>
-
-                        <!-- Main Image Preview Container -->
-                        <div class="relative bg-black aspect-[9/16] overflow-hidden group">
-                            <img id="part3VisualImg" src="" class="w-full h-full object-cover transition transform group-hover:scale-105 duration-500" alt="Part 3 Visual">
-
-                            <!-- Rating Score Badge like skincare.png -->
-                            <div class="absolute top-12 right-3 bg-red-600 text-white p-2.5 rounded-xl border-2 border-white/30 shadow-2xl transform rotate-6 text-center" id="part3RatingBadge">
-                                <div class="text-[9px] font-bold uppercase tracking-wider">Overall?</div>
-                                <div class="text-xl font-extrabold leading-none">9/10</div>
-                                <div class="text-[8px] font-medium mt-0.5">Highly Recommended!</div>
-                            </div>
-
-                            <!-- CTA Button Badge Overlay -->
-                            <div class="absolute bottom-16 left-3 right-3 text-center">
-                                <div id="part3CTABadge" class="inline-flex items-center space-x-2 bg-gradient-to-r from-red-600 to-amber-500 text-white text-xs font-bold px-4 py-2 rounded-xl shadow-xl border border-white/20 transform -rotate-1">
-                                    <i class="fa-solid fa-link"></i>
-                                    <span>KLIK LINK DI DESKRIPSI!</span>
-                                    <i class="fa-solid fa-arrow-right"></i>
-                                </div>
-                            </div>
-
-                            <!-- Bottom Subtitle Bar -->
-                            <div class="absolute bottom-3 left-3 right-3 bg-black/80 backdrop-blur-md p-2 rounded-xl border border-white/10 text-center">
-                                <p id="part3SubtitleText" class="text-[11px] text-amber-300 font-medium italic">
-                                    "Overall 9 dari 10 — penawaran spesial cuma minggu ini!"
-                                </p>
-                            </div>
-
-                            <button onclick="regeneratePartImage(3)" title="Regenerate Gambar Part 3" class="absolute top-3 left-3 p-2 bg-black/60 hover:bg-indigo-600 text-white rounded-lg text-xs opacity-0 group-hover:opacity-100 transition">
-                                <i class="fa-solid fa-arrows-rotate"></i>
-                            </button>
-                        </div>
-
-                        <!-- Storyboard Details Breakdown -->
-                        <div class="p-4 space-y-3 bg-cardbg text-xs">
-                            <div class="space-y-1">
-                                <div class="text-[10px] uppercase tracking-wider text-indigo-400 font-bold">Kamera & Angle</div>
-                                <div id="part3Camera" class="text-gray-300 font-mono">50mm Lens, f/1.4, High Angle Lifestyle, Thumbs-up Hero Shot</div>
-                            </div>
-                            <div class="space-y-1">
-                                <div class="text-[10px] uppercase tracking-wider text-indigo-400 font-bold">Deskripsi Visual Frame</div>
-                                <p id="part3VisualDesc" class="text-gray-300 leading-relaxed">Model tersenyum puas memegang produk dengan gesture ajakan klik link.</p>
-                            </div>
-                            <div class="space-y-1 bg-darkbg p-2.5 rounded-xl border border-bordercolor">
-                                <div class="text-[10px] uppercase tracking-wider text-amber-400 font-bold">Voiceover Indonesia (20-30s)</div>
-                                <p id="part3VO" class="text-gray-200 italic font-serif">"Gimana? Worthed banget kan. Langsung klik keranjang kuning atau link di bawah ya!"</p>
-                            </div>
-                        </div>
-                    </div>
-
+                <div class="overflow-x-auto rounded-lg border border-slate-700 custom-scrollbar shadow-2xl">
+                    <table class="storyboard-table bg-slate-800" id="storyboard-table">
+                        <thead>
+                            <tr>
+                                <th class="w-16">Scene</th>
+                                <th class="w-20">Durasi</th>
+                                <th class="w-40">Angle & Movement</th>
+                                <th class="w-64">Visual (AI Generated)</th>
+                                <th class="w-48">Produk & Adegan</th>
+                                <th class="w-24">Lighting</th>
+                                <th class="w-24">Transisi</th>
+                                <th class="w-48">Voiceover (Indonesia)</th>
+                                <th class="w-32">Text Overlay</th>
+                            </tr>
+                        </thead>
+                        <tbody id="storyboard-tbody">
+                            <!-- Rows will be dynamically injected here -->
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
-            <!-- TAB 2: Google Flow AI / Veo / Luma Prompts Copy Workspace -->
-            <div id="promptsTabContent" class="hidden space-y-6">
-
-                <!-- Master Continuity Rule Reminder -->
-                <div class="p-4 rounded-xl bg-indigo-950/40 border border-indigo-500/30 text-xs text-indigo-200 space-y-2">
-                    <div class="font-bold text-sm text-indigo-300 flex items-center gap-2">
-                        <i class="fa-solid fa-circle-info"></i>
-                        Aturan Kontinuitas Frame (Google Flow AI / Veo / Luma):
+            <!-- Prompts Content -->
+            <div id="content-prompts" class="hidden space-y-6">
+                <div class="bg-slate-800 rounded-xl p-6 border border-slate-700 shadow-xl relative">
+                    <button onclick="copyPrompts()" class="absolute top-4 right-4 bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded-md text-sm transition flex items-center gap-2">
+                        <i class="fa-regular fa-copy"></i> Copy Semua
+                    </button>
+                    <h2 class="text-xl font-bold text-white mb-4 border-b border-slate-700 pb-2">PROMPT VIDEO AI (GOOGLE FLOW / KLING / LUMA)</h2>
+                    
+                    <div id="prompt-container" class="space-y-6 text-sm text-slate-300 font-mono whitespace-pre-wrap leading-relaxed">
+                        <!-- Prompts will be dynamically injected here -->
                     </div>
-                    <p>Frame terakhir Part 1 Wajib di-upload sebagai Frame Referensi Pertama Part 2. Frame terakhir Part 2 Wajib menjadi Frame Referensi Pertama Part 3 untuk hasil video 30 detik yang seamless tanpa resetting scene.</p>
                 </div>
-
-                <!-- Prompt Part 1 -->
-                <div class="glass-panel rounded-2xl p-5 border border-bordercolor space-y-3">
-                    <div class="flex items-center justify-between">
-                        <h3 class="text-sm font-bold text-indigo-300 flex items-center gap-2">
-                            <span class="w-2 h-2 rounded-full bg-red-500"></span>
-                            PROMPT GOOGLE FLOW AI - PART 1 (0–10 Detik)
-                        </h3>
-                        <button onclick="copyText('promptPart1Text')" class="text-xs px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium flex items-center space-x-1">
-                            <i class="fa-solid fa-copy"></i>
-                            <span>Copy Prompt Part 1</span>
-                        </button>
-                    </div>
-                    <textarea id="promptPart1Text" rows="6" readonly class="w-full p-3.5 rounded-xl bg-darkbg border border-bordercolor font-mono text-xs text-emerald-300 focus:outline-none custom-scrollbar"></textarea>
-                </div>
-
-                <!-- Prompt Part 2 -->
-                <div class="glass-panel rounded-2xl p-5 border border-bordercolor space-y-3">
-                    <div class="flex items-center justify-between">
-                        <h3 class="text-sm font-bold text-purple-300 flex items-center gap-2">
-                            <span class="w-2 h-2 rounded-full bg-purple-500"></span>
-                            PROMPT GOOGLE FLOW AI - PART 2 (10–20 Detik Continuation)
-                        </h3>
-                        <button onclick="copyText('promptPart2Text')" class="text-xs px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-medium flex items-center space-x-1">
-                            <i class="fa-solid fa-copy"></i>
-                            <span>Copy Prompt Part 2</span>
-                        </button>
-                    </div>
-                    <textarea id="promptPart2Text" rows="6" readonly class="w-full p-3.5 rounded-xl bg-darkbg border border-bordercolor font-mono text-xs text-emerald-300 focus:outline-none custom-scrollbar"></textarea>
-                </div>
-
-                <!-- Prompt Part 3 -->
-                <div class="glass-panel rounded-2xl p-5 border border-bordercolor space-y-3">
-                    <div class="flex items-center justify-between">
-                        <h3 class="text-sm font-bold text-pink-300 flex items-center gap-2">
-                            <span class="w-2 h-2 rounded-full bg-pink-500"></span>
-                            PROMPT GOOGLE FLOW AI - PART 3 (20–30 Detik Hero CTA)
-                        </h3>
-                        <button onclick="copyText('promptPart3Text')" class="text-xs px-3 py-1.5 rounded-lg bg-pink-600 hover:bg-pink-500 text-white font-medium flex items-center space-x-1">
-                            <i class="fa-solid fa-copy"></i>
-                            <span>Copy Prompt Part 3</span>
-                        </button>
-                    </div>
-                    <textarea id="promptPart3Text" rows="6" readonly class="w-full p-3.5 rounded-xl bg-darkbg border border-bordercolor font-mono text-xs text-emerald-300 focus:outline-none custom-scrollbar"></textarea>
-                </div>
-
-                <!-- Modul Kamera & Realism (Negative Prompts) -->
-                <div class="glass-panel rounded-2xl p-5 border border-bordercolor space-y-3">
-                    <div class="flex items-center justify-between">
-                        <h3 class="text-sm font-bold text-amber-300 flex items-center gap-2">
-                            <i class="fa-solid fa-camera"></i>
-                            REALISTIC CAMERA & PHYSICS MODULE (Negative Prompt / Quality Guardrails)
-                        </h3>
-                        <button onclick="copyText('promptRealismText')" class="text-xs px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-medium flex items-center space-x-1">
-                            <i class="fa-solid fa-copy"></i>
-                            <span>Copy Negative Prompt</span>
-                        </button>
-                    </div>
-                    <textarea id="promptRealismText" rows="4" readonly class="w-full p-3.5 rounded-xl bg-darkbg border border-bordercolor font-mono text-xs text-amber-200 focus:outline-none custom-scrollbar"></textarea>
-                </div>
-
             </div>
 
         </section>
-
     </main>
 
-    <!-- Footer -->
-    <footer class="mt-12 border-t border-bordercolor py-6 text-center text-xs text-gray-500">
-        <p>© 2026 Affiliate Studio AI — Master Storyboard & Prompt Video Generator based on e-Book Video Affiliate Panjang.</p>
-    </footer>
-
-    <!-- API Key Settings Modal -->
-    <div id="apiKeyModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="glass-panel rounded-2xl max-w-md w-full p-6 space-y-4 border border-bordercolor">
-            <div class="flex items-center justify-between border-b border-bordercolor pb-3">
-                <h3 class="text-sm font-bold text-white flex items-center gap-2">
-                    <i class="fa-solid fa-key text-amber-400"></i>
-                    Pengaturan Gemini API Key (Opsional)
-                </h3>
-                <button onclick="closeApiKeyModal()" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-            <p class="text-xs text-gray-300 leading-relaxed">
-                Sistem menggunakan runtime auto key. Anda juga bisa memasukkan Google Gemini API Key Anda sendiri jika diperlukan.
-            </p>
-            <input type="password" id="customApiKeyInput" placeholder="AIzaSy..." class="w-full px-3.5 py-2.5 rounded-xl bg-darkbg border border-bordercolor text-xs text-white focus:outline-none">
-            <div class="flex justify-end space-x-2 pt-2">
-                <button onclick="closeApiKeyModal()" class="px-3.5 py-2 rounded-xl bg-gray-800 text-xs text-gray-300 hover:bg-gray-700">Tutup</button>
-                <button onclick="saveApiKey()" class="px-4 py-2 rounded-xl bg-indigo-600 text-xs text-white font-medium hover:bg-indigo-500">Simpan Key</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Notification Toast -->
-    <div id="toast" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 px-4 py-3 rounded-xl bg-indigo-600 text-white text-xs font-semibold shadow-2xl flex items-center space-x-2 border border-white/20">
-        <i class="fa-solid fa-circle-check text-base"></i>
-        <span id="toastMessage">Pesan berhasil disimpan!</span>
-    </div>
+    <div id="toast-container"></div>
 
     <script>
-        // Global Application State
-        const state = {
-            uploadedImageBase64: null,
-            uploadedImageMime: 'image/jpeg',
-            customApiKey: '',
-            storyboardData: null
-        };
+        // --- Core Configuration ---
+        const apiKey = ""; // Canvas handles this automatically.
+        const flashModel = "gemini-3-flash-preview";
+        const imageModel = "gemini-3.1-flash-image"; // For realistic image generation
+        
+        // --- DOM Elements ---
+        const form = document.getElementById('generator-form');
+        const imgInput = document.getElementById('product-image');
+        const imgPreview = document.getElementById('image-preview');
+        const uploadPlaceholder = document.getElementById('upload-placeholder');
+        const btnGenerate = document.getElementById('btn-generate');
+        const loadingState = document.getElementById('loading-state');
+        const loadingTitle = document.getElementById('loading-title');
+        const loadingDesc = document.getElementById('loading-desc');
+        const resultsSection = document.getElementById('results-section');
+        const tabStoryboard = document.getElementById('tab-storyboard');
+        const tabPrompts = document.getElementById('tab-prompts');
+        const contentStoryboard = document.getElementById('content-storyboard');
+        const contentPrompts = document.getElementById('content-prompts');
+        const displayProductName = document.getElementById('display-product-name');
+        const storyboardTbody = document.getElementById('storyboard-tbody');
+        const promptContainer = document.getElementById('prompt-container');
+        
+        let uploadedBase64 = "";
+        let generatedData = null; // Store JSON result
+        let fullPromptText = ""; // Store for copy button
 
-        // Preset Configurations
-        const presets = {
-            skincare: {
-                name: 'Sonik Scents Skin Nice Body Toner 200ml',
-                category: 'Skincare & Beauty',
-                model: 'Pria Muda 20-25th, Ganteng Natural, Clean & Energetik',
-                features: 'Mencerahkan kulit, melembabkan, merawat skin barrier, formula Allantoin & Niacinamide',
-                rating: '9/10 - Highly Recommended!',
-                cta: 'KLIK LINK DI DESKRIPSI!',
-                image: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="600" viewBox="0 0 400 600"><rect width="400" height="600" fill="%231a0a10"/><rect x="150" y="150" width="100" height="300" rx="20" fill="%23dc2626"/><rect x="175" y="100" width="50" height="50" rx="10" fill="%23ffffff"/><text x="200" y="270" font-family="sans-serif" font-weight="bold" font-size="16" fill="white" text-anchor="middle">SKIN NICE</text><text x="200" y="295" font-family="sans-serif" font-size="12" fill="white" text-anchor="middle">BODY TONER</text></svg>'
-            },
-            gadget: {
-                name: 'AeroSound Pro ANC Wireless Earbuds',
-                category: 'Gadgets & Tech',
-                model: 'Pria Dewasa 28-35th, Profesional & Smart',
-                features: 'Active Noise Cancellation 45dB, Suara Bass Dalam, Battery Life 40 Jam, IPX5 Waterproof',
-                rating: '9.8/10 - Best Value Gadget!',
-                cta: 'CEK PROMO DISKON DI KERANJANG!',
-                image: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="600" viewBox="0 0 400 600"><rect width="400" height="600" fill="%230f172a"/><rect x="120" y="200" width="160" height="160" rx="30" fill="%23334155"/><circle cx="160" cy="280" r="25" fill="%2338bdf8"/><circle cx="240" cy="280" r="25" fill="%2338bdf8"/><text x="200" y="420" font-family="sans-serif" font-weight="bold" font-size="16" fill="white" text-anchor="middle">AEROSOUND PRO</text></svg>'
-            },
-            fashion: {
-                name: 'UrbanFlex Waterproof Oversized Jacket',
-                category: 'Fashion & Accessories',
-                model: 'Wanita Muda 20-25th, Glowing Natural, Trendy',
-                features: 'Bahan Anti Air GoreTex, Desain Trendy Oversized, Ringan, Kantong Multifungsi',
-                rating: '9.5/10 - Must Have Fashion!',
-                cta: 'BELI SEKARANG SEBELUM KEHABISAN!',
-                image: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="600" viewBox="0 0 400 600"><rect width="400" height="600" fill="%2318181b"/><path d="M120 180 L280 180 L320 280 L280 480 L120 480 L80 280 Z" fill="%23ec4899"/><text x="200" y="320" font-family="sans-serif" font-weight="bold" font-size="16" fill="white" text-anchor="middle">URBANFLEX JACKET</text></svg>'
-            },
-            food: {
-                name: 'Crunchy Bites Premium Almond Cookies',
-                category: 'Food & Beverage',
-                model: 'Wanita Hijab 22-28th, Elegat & Warm',
-                features: 'Almond Melimpah, 100% Mentega Wijsman, Tanpa Bahan Pengawet, Manis Pas',
-                rating: '10/10 - Enak Banget Recommended!',
-                cta: 'PESAN SEKARANG DI BIO!',
-                image: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="600" viewBox="0 0 400 600"><rect width="400" height="600" fill="%231c1917"/><circle cx="200" cy="280" r="90" fill="%23d97706"/><circle cx="170" cy="250" r="10" fill="%2378350f"/><circle cx="220" cy="290" r="12" fill="%2378350f"/><text x="200" y="420" font-family="sans-serif" font-weight="bold" font-size="16" fill="white" text-anchor="middle">ALMOND COOKIES</text></svg>'
-            }
-        };
-
-        function loadPreset(key) {
-            const preset = presets[key];
-            if (!preset) return;
-
-            document.getElementById('productName').value = preset.name;
-            document.getElementById('productCategory').value = preset.category;
-            document.getElementById('modelAvatar').value = preset.model;
-            document.getElementById('productFeatures').value = preset.features;
-            document.getElementById('productRating').value = preset.rating;
-            document.getElementById('productCTA').value = preset.cta;
-
-            // Set placeholder image
-            state.uploadedImageBase64 = preset.image;
-            document.getElementById('imagePreview').src = preset.image;
-            document.getElementById('uploadPlaceholder').classList.add('hidden');
-            document.getElementById('imagePreviewContainer').classList.remove('hidden');
-            document.getElementById('analyzeBtn').disabled = false;
-            document.getElementById('analyzeBtn').classList.remove('opacity-50', 'cursor-not-allowed');
-
-            showToast(`Preset ${preset.category} berhasil dimuat!`);
+        // --- Utility Functions ---
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast flex items-center gap-3 ${type}`;
+            
+            const icon = type === 'success' 
+                ? '<i class="fa-solid fa-circle-check text-green-400 text-xl"></i>' 
+                : '<i class="fa-solid fa-circle-exclamation text-red-400 text-xl"></i>';
+                
+            toast.innerHTML = `
+                ${icon}
+                <span class="font-medium">${message}</span>
+            `;
+            
+            container.appendChild(toast);
+            
+            // Trigger animation
+            setTimeout(() => toast.classList.add('show'), 10);
+            
+            // Remove after 3 seconds
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
         }
 
-        function handleImageUpload(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            if (file.size > 10 * 1024 * 1024) {
-                alert('Ukuran file maksimal 10MB!');
-                return;
-            }
-
-            state.uploadedImageMime = file.type;
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                state.uploadedImageBase64 = event.target.result;
-                document.getElementById('imagePreview').src = event.target.result;
-                document.getElementById('uploadPlaceholder').classList.add('hidden');
-                document.getElementById('imagePreviewContainer').classList.remove('hidden');
-                document.getElementById('analyzeBtn').disabled = false;
-                document.getElementById('analyzeBtn').classList.remove('opacity-50', 'cursor-not-allowed');
-                showToast('Foto produk berhasil diupload!');
-            };
-            reader.readAsDataURL(file);
-        }
-
-        function removeProductImage() {
-            state.uploadedImageBase64 = null;
-            document.getElementById('productImageInput').value = '';
-            document.getElementById('uploadPlaceholder').classList.remove('hidden');
-            document.getElementById('imagePreviewContainer').classList.add('hidden');
-            document.getElementById('analyzeBtn').disabled = true;
-            document.getElementById('analyzeBtn').classList.add('opacity-50', 'cursor-not-allowed');
-        }
-
-        async function analyzeProductVision() {
-            if (!state.uploadedImageBase64) {
-                alert('Silakan upload foto produk terlebih dahulu!');
-                return;
-            }
-
-            showToast('Menganalisis foto produk via Gemini Vision...');
-            const analyzeBtn = document.getElementById('analyzeBtn');
-            analyzeBtn.disabled = true;
-            analyzeBtn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i><span>Menganalisis Label & Warna...</span>`;
-
+        async function copyPrompts() {
+            if (!fullPromptText) return;
             try {
-                const base64Clean = state.uploadedImageBase64.split(',')[1] || state.uploadedImageBase64;
-                const apiKey = state.customApiKey || "";
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+                // Try modern API first
+                if (navigator.clipboard && window.isSecureContext) {
+                    await navigator.clipboard.writeText(fullPromptText);
+                } else {
+                    // Fallback for older browsers or non-secure contexts (iframe)
+                    const textArea = document.createElement("textarea");
+                    textArea.value = fullPromptText;
+                    // Move textarea out of the viewport
+                    textArea.style.position = "absolute";
+                    textArea.style.left = "-999999px";
+                    document.body.prepend(textArea);
+                    textArea.select();
+                    try {
+                        document.execCommand('copy');
+                    } catch (error) {
+                        console.error('Fallback copy failed', error);
+                        showToast('Gagal menyalin text', 'error');
+                        return;
+                    } finally {
+                        textArea.remove();
+                    }
+                }
+                showToast('Prompt berhasil disalin ke clipboard!');
+            } catch (err) {
+                console.error('Failed to copy text: ', err);
+                showToast('Gagal menyalin text', 'error');
+            }
+        }
 
-                const promptText = `Analisis foto produk ini. Ekstrak informasi berikut dalam format JSON persis:
-{
-  "productName": "Nama merek dan produk tertera pada kemasan",
-  "category": "Salah satu dari: Skincare & Beauty, Gadgets & Tech, Fashion & Accessories, Food & Beverage, Home & Household",
-  "features": "Ringkasan 3-4 fitur atau manfaat utama tertera atau terlihat",
-  "suggestedRating": "Contoh: 9/10 - Highly Recommended!"
-}`;
+        async function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => {
+                    // split to get only the base64 part, not the mime type prefix for gemini payload
+                    const base64String = reader.result.split(',')[1];
+                    const mimeType = file.type;
+                    resolve({ base64String, mimeType });
+                };
+                reader.onerror = error => reject(error);
+            });
+        }
 
-                const payload = {
-                    contents: [{
+        // --- Event Listeners ---
+        imgInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                // Validate size (< 5MB for API safety)
+                if(file.size > 5 * 1024 * 1024) {
+                    showToast("Ukuran file terlalu besar. Maksimal 5MB.", "error");
+                    imgInput.value = '';
+                    return;
+                }
+                
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    imgPreview.src = e.target.result;
+                    imgPreview.classList.remove('hidden');
+                    uploadPlaceholder.classList.add('hidden');
+                }
+                reader.readAsDataURL(file);
+                
+                try {
+                    const data = await fileToBase64(file);
+                    uploadedBase64 = data;
+                } catch (error) {
+                    showToast("Gagal membaca file gambar", "error");
+                }
+            } else {
+                imgPreview.classList.add('hidden');
+                uploadPlaceholder.classList.remove('hidden');
+                uploadedBase64 = "";
+            }
+        });
+
+        tabStoryboard.addEventListener('click', () => {
+            tabStoryboard.classList.replace('text-slate-400', 'text-amber-500');
+            tabStoryboard.classList.replace('border-transparent', 'border-amber-500');
+            if(tabStoryboard.classList.contains('border-b-2') === false) tabStoryboard.classList.add('border-b-2');
+            
+            tabPrompts.classList.replace('text-amber-500', 'text-slate-400');
+            tabPrompts.classList.remove('border-b-2', 'border-amber-500');
+            
+            contentStoryboard.classList.remove('hidden');
+            contentPrompts.classList.add('hidden');
+        });
+
+        tabPrompts.addEventListener('click', () => {
+            tabPrompts.classList.replace('text-slate-400', 'text-amber-500');
+            tabPrompts.classList.replace('border-transparent', 'border-amber-500');
+            if(tabPrompts.classList.contains('border-b-2') === false) tabPrompts.classList.add('border-b-2');
+            
+            tabStoryboard.classList.replace('text-amber-500', 'text-slate-400');
+            tabStoryboard.classList.remove('border-b-2', 'border-amber-500');
+            
+            contentPrompts.classList.remove('hidden');
+            contentStoryboard.classList.add('hidden');
+        });
+
+        // --- Core Application Logic ---
+        async function fetchStoryboardData(productName, category, features, imageData) {
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${flashModel}:generateContent?key=${apiKey}`;
+            
+            const systemInstruction = `
+            Kamu adalah seorang Sutradara Video Iklan Profesional (Creative Director) dan ahli Prompt Engineering untuk AI Video (Google Flow, Kling, Runway).
+            Tugasmu adalah membuat konsep video vertikal (9:16) berdurasi 30 detik untuk mempromosikan sebuah produk.
+            Video harus dibagi menjadi 3 Part (masing-masing 10 detik):
+            Part 1 (0-10s): Penarikan Perhatian (Hook).
+            Part 2 (10-20s): Menunjukkan Fitur & Keunggulan.
+            Part 3 (20-30s): Closing & Call to Action.
+            
+            PENTING: Output harus dalam format JSON yang ketat mengikuti schema ini.
+            Dilarang memberikan teks markdown di luar JSON. Pastikan bahasanya profesional (bahasa Indonesia untuk teks storyboard, bahasa Inggris untuk prompt AI).
+            `;
+
+            const promptText = `
+            Analisis gambar produk yang diunggah.
+            Nama Produk: ${productName}
+            Kategori: ${category}
+            Fitur Utama: ${features || "Analisis dari gambar"}
+            
+            Buat 9 scene storyboard (3 scene per part).
+            Sediakan deskripsi visual bahasa Inggris (visualPromptForImageGen) yang SANGAT DETAIL untuk meng-generate gambar storyboard (harus ultra realistis, fotorealistik, sebutkan ada model pria/wanita sedang menggunakan produk tersebut, lighting, angle, no CGI).
+            
+            Kemudian buat prompt komprehensif untuk Google Flow AI (video generator) berdasarkan kontinuitas model dan adegan (Part 1, 2, 3 menyambung secara natural).
+            `;
+
+            const schema = {
+                type: "OBJECT",
+                properties: {
+                    storyboard: {
+                        type: "ARRAY",
+                        description: "Pastikan selalu persis 9 item (scene 1 sampai 9)",
+                        items: {
+                            type: "OBJECT",
+                            properties: {
+                                partNumber: { type: "NUMBER", description: "1, 2, atau 3" },
+                                partTitle: { type: "STRING", description: "Contoh: PART 1 - 0-10 DETIK (PENARIKAN PERHATIAN)" },
+                                sceneNumber: { type: "NUMBER" },
+                                duration: { type: "STRING", description: "0-3s, 3-6s, dst" },
+                                angle: { type: "STRING", description: "Angle & movement kamera" },
+                                visualPromptForImageGen: { type: "STRING", description: "PROMPT BAHASA INGGRIS UNTUK IMAGE GENERATOR. Harus sangat deskriptif, fotorealistik, sebutkan subjek (model) menggunakan produk secara realistis, lighting, kamera." },
+                                productAction: { type: "STRING", description: "Deskripsi singkat aksi produk dalam Bahasa Indonesia" },
+                                lighting: { type: "STRING" },
+                                transition: { type: "STRING" },
+                                voiceover: { type: "STRING" },
+                                textOverlay: { type: "STRING", description: "Maksimal 5 kata" }
+                            },
+                            required: ["partNumber", "partTitle", "sceneNumber", "duration", "angle", "visualPromptForImageGen", "productAction", "lighting", "transition", "voiceover", "textOverlay"]
+                        }
+                    },
+                    videoPrompts: {
+                        type: "OBJECT",
+                        properties: {
+                            masterStyle: { type: "STRING", description: "Aturan konsistensi visual, kualitas kamera, gaya model. Bahasa Inggris." },
+                            part1: { type: "STRING", description: "Prompt video Part 1. Bahasa Inggris." },
+                            part2: { type: "STRING", description: "Prompt video Part 2 bersambung dari Part 1. Bahasa Inggris." },
+                            part3: { type: "STRING", description: "Prompt video Part 3 bersambung dari Part 2. Bahasa Inggris." },
+                            negativePrompt: { type: "STRING", description: "Hal-hal yang harus dihindari AI. Bahasa Inggris." },
+                            settings: { type: "STRING", description: "Setting rasio, durasi, referensi dsb. Bahasa Indonesia/Inggris campuran." }
+                        },
+                        required: ["masterStyle", "part1", "part2", "part3", "negativePrompt", "settings"]
+                    }
+                },
+                required: ["storyboard", "videoPrompts"]
+            };
+
+            const payload = {
+                contents: [
+                    {
                         role: "user",
                         parts: [
                             { text: promptText },
                             {
                                 inlineData: {
-                                    mimeType: state.uploadedImageMime || "image/jpeg",
-                                    data: base64Clean
+                                    mimeType: imageData.mimeType,
+                                    data: imageData.base64String
                                 }
                             }
                         ]
-                    }],
-                    generationConfig: {
-                        responseMimeType: "application/json"
                     }
-                };
-
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-
-                if (response.ok) {
-                    const result = await response.json();
-                    const textRes = result.candidates?.[0]?.content?.parts?.[0]?.text;
-                    if (textRes) {
-                        const parsed = JSON.parse(textRes);
-                        if (parsed.productName) document.getElementById('productName').value = parsed.productName;
-                        if (parsed.category) document.getElementById('productCategory').value = parsed.category;
-                        if (parsed.features) document.getElementById('productFeatures').value = parsed.features;
-                        if (parsed.suggestedRating) document.getElementById('productRating').value = parsed.suggestedRating;
-                        showToast('Detail produk berhasil dideteksi secara otomatis!');
-                    }
-                } else {
-                    console.warn('Vision call failed, using default text fallback.');
-                    showToast('Gagal memproses Vision API. Menggunakan estimasi default.');
+                ],
+                systemInstruction: {
+                    parts: [{ text: systemInstruction }]
+                },
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: schema,
+                    temperature: 0.7
                 }
-            } catch (err) {
-                console.error(err);
-                showToast('Fitur auto-vision selesai dengan penyesuaian manual.');
-            } finally {
-                analyzeBtn.disabled = false;
-                analyzeBtn.innerHTML = `<i class="fa-solid fa-eye"></i><span>Auto-Detect Detail Produk via Gemini Vision</span>`;
-            }
-        }
-
-        async function generateFullStoryboard() {
-            const productName = document.getElementById('productName').value.trim() || 'Produk Promo Affiliate';
-            const category = document.getElementById('productCategory').value;
-            const modelAvatar = document.getElementById('modelAvatar').value;
-            const features = document.getElementById('productFeatures').value.trim() || 'Bahan berkualitas, multifungsi, desain modern';
-            const rating = document.getElementById('productRating').value.trim() || '9/10 - Highly Recommended!';
-            const cta = document.getElementById('productCTA').value.trim() || 'KLIK LINK DI DESKRIPSI!';
-            const visualStyle = document.querySelector('input[name="visualStyle"]:checked').value;
-            const voiceTone = document.getElementById('voiceTone').value;
-            const aspectRatio = document.getElementById('aspectRatio').value;
-
-            // Show Loading Banner
-            document.getElementById('loadingSection').classList.remove('hidden');
-            document.getElementById('outputSection').classList.add('hidden');
-            updateProgress(20, 'Membuat Struktur Master Storyboard & Voiceover...');
-
-            try {
-                // Call Gemini 3 Flash to create structured JSON text
-                const masterData = await generateMasterPromptScript({
-                    productName, category, modelAvatar, features, rating, cta, visualStyle, voiceTone, aspectRatio
-                });
-
-                state.storyboardData = masterData;
-
-                updateProgress(50, 'Mengomposisi Foto Storyboard Visual Model & Produk...');
-
-                // Populate Text UI
-                renderTextOutputs(masterData);
-
-                // Generate Real Photorealistic Images via Gemini 3.1 Flash Image
-                updateProgress(75, 'Render Foto Visual Frame Part 1, Part 2 & Part 3...');
-                await generateAllVisualCardImages(masterData, productName, modelAvatar);
-
-                updateProgress(100, 'Selesai!');
-                setTimeout(() => {
-                    document.getElementById('loadingSection').classList.add('hidden');
-                    document.getElementById('outputSection').classList.remove('hidden');
-                    document.getElementById('outputSection').scrollIntoView({ behavior: 'smooth' });
-                }, 400);
-
-            } catch (error) {
-                console.error('Error during generation:', error);
-                showToast('Terjadi kesalahan. Menggunakan anti-error fallback engine...');
-                
-                // Fallback Anti-Error Execution
-                const fallbackData = generateFallbackData(productName, features, modelAvatar, rating, cta);
-                state.storyboardData = fallbackData;
-                renderTextOutputs(fallbackData);
-                renderFallbackImages();
-
-                setTimeout(() => {
-                    document.getElementById('loadingSection').classList.add('hidden');
-                    document.getElementById('outputSection').classList.remove('hidden');
-                }, 500);
-            }
-        }
-
-        async function generateMasterPromptScript(params) {
-            const apiKey = state.customApiKey || "";
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
-
-            const systemPrompt = `Act as a Senior Affiliate Video Director, Commercial Storyboard Artist, Product Marketing Expert, and AI Video Production Specialist.
-Create a 30-second vertical affiliate video storyboard for TikTok, YouTube Shorts, Instagram Reels, divided into 3 continuous parts of 10 seconds each based on the e-book guidelines.
-Continuous rule: Part 1 end frame = Part 2 start frame. Part 2 end frame = Part 3 start frame.`;
-
-            const userPrompt = `Product Name: ${params.productName}
-Category: ${params.category}
-Model/Presenter Talent: ${params.modelAvatar}
-Features/Highlights: ${params.features}
-Rating Tag: ${params.rating}
-CTA Tag: ${params.cta}
-Visual Style: ${params.visualStyle}
-Voiceover Tone: ${params.voiceTone}
-Aspect Ratio: ${params.aspectRatio}
-
-Return ONLY valid JSON with this exact structure:
-{
-  "part1": {
-    "camera": "Camera specs, focal length, angle, movement",
-    "visualDesc": "Detailed visual scene description including human model holding/using product",
-    "voiceover": "Indonesian spoken script for 0-10 seconds",
-    "hookText": "On-screen badge text max 5 words",
-    "flowAiPrompt": "Complete English video generator prompt for Google Flow AI / Veo / Luma (0-10s)"
-  },
-  "part2": {
-    "camera": "Camera specs, focal length, angle, movement",
-    "visualDesc": "Continuation visual scene showing close-up demo, texture, hands applying/demonstrating",
-    "voiceover": "Indonesian spoken script for 10-20 seconds",
-    "featureBadges": ["Feature 1", "Feature 2", "Feature 3"],
-    "flowAiPrompt": "Complete English video generator prompt for Google Flow AI / Veo / Luma (10-20s continuation)"
-  },
-  "part3": {
-    "camera": "Camera specs, focal length, angle, movement",
-    "visualDesc": "Continuation lifestyle hero scene showing smiling model presenting product, thumbs up",
-    "voiceover": "Indonesian spoken script for 20-30 seconds with strong CTA",
-    "ratingText": "${params.rating}",
-    "ctaText": "${params.cta}",
-    "flowAiPrompt": "Complete English video generator prompt for Google Flow AI / Veo / Luma (20-30s hero CTA)"
-  },
-  "negativePrompt": "Realistic camera & physics negative prompt guardrails"
-}`;
-
-            const payload = {
-                contents: [{ parts: [{ text: userPrompt }] }],
-                systemInstruction: { parts: [{ text: systemPrompt }] },
-                generationConfig: { responseMimeType: "application/json" }
             };
 
-            const res = await fetch(apiUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
+            // Setup fetch with simple retry mechanism for robustness
+            let retries = 2;
+            let lastError = null;
 
-            if (!res.ok) throw new Error(`API Error ${res.status}`);
-            const data = await res.json();
-            const jsonText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-            return JSON.parse(jsonText);
-        }
-
-        async function generateAllVisualCardImages(masterData, productName, modelAvatar) {
-            const apiKey = state.customApiKey || "";
-            const imageUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image:generateContent?key=${apiKey}`;
-
-            const imagePrompts = [
-                `A photorealistic 9:16 vertical commercial shot for ${productName}. Featuring a real model (${modelAvatar}) holding and introducing the product in a bright studio environment. Highly detailed, 4k commercial photography, realistic skin texture, natural lighting.`,
-                `A photorealistic 9:16 vertical close-up demo shot for ${productName}. Showing human hands interacting with or applying the product texture up close. Professional product lighting, macro focal length, clear material details.`,
-                `A photorealistic 9:16 vertical hero shot for ${productName}. Presenting a handsome/attractive smiling model (${modelAvatar}) next to the product on a table, giving a thumbs-up gesture, high quality lifestyle affiliate background.`
-            ];
-
-            for (let i = 1; i <= 3; i++) {
+            while (retries > 0) {
                 try {
-                    const promptText = imagePrompts[i - 1];
-                    const payload = {
-                        contents: [{ parts: [{ text: promptText }] }],
-                        generationConfig: {
-                            responseModalities: ['IMAGE'],
-                            imageConfig: { aspectRatio: "9:16" }
-                        }
-                    };
-
-                    const resp = await fetch(imageUrl, {
+                    const response = await fetch(apiUrl, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(payload)
                     });
-
-                    if (resp.ok) {
-                        const resData = await resp.json();
-                        const base64Data = resData?.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
-                        const mime = resData?.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.mimeType || 'image/png';
-                        if (base64Data) {
-                            document.getElementById(`part${i}VisualImg`).src = `data:${mime};base64,${base64Data}`;
-                        } else {
-                            renderSingleFallbackImage(i, productName);
-                        }
+                    
+                    if (!response.ok) throw new Error(`API Error: ${response.status}`);
+                    
+                    const result = await response.json();
+                    if (result.candidates && result.candidates[0].content.parts[0].text) {
+                        return JSON.parse(result.candidates[0].content.parts[0].text);
                     } else {
-                        renderSingleFallbackImage(i, productName);
+                        throw new Error("Invalid response structure");
                     }
-                } catch (e) {
-                    console.warn(`Image gen failed for part ${i}:`, e);
-                    renderSingleFallbackImage(i, productName);
+                } catch (error) {
+                    console.error("Fetch JSON Error:", error);
+                    lastError = error;
+                    retries--;
+                    if (retries > 0) await new Promise(r => setTimeout(r, 1000)); // wait 1s before retry
                 }
             }
+            throw lastError;
         }
 
-        function renderSingleFallbackImage(partNum, productName) {
-            const colors = ['%234f46e5', '%237c3aed', '%23db2777'];
-            const titles = ['PART 1: HOOK & REVEAL', 'PART 2: DEMO & DETAILS', 'PART 3: LIFESTYLE & CTA'];
-            const svg = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="360" height="640" viewBox="0 0 360 640"><rect width="360" height="640" fill="%230f172a"/><rect x="40" y="160" width="280" height="320" rx="20" fill="${colors[partNum - 1]}" opacity="0.3"/><circle cx="180" cy="280" r="60" fill="${colors[partNum - 1]}"/><text x="180" y="380" font-family="sans-serif" font-weight="bold" font-size="18" fill="white" text-anchor="middle">${titles[partNum - 1]}</text><text x="180" y="410" font-family="sans-serif" font-size="12" fill="%23cbd5e1" text-anchor="middle">${encodeURIComponent(productName)}</text></svg>`;
-            document.getElementById(`part${partNum}VisualImg`).src = svg;
-        }
+        async function generateSceneImage(prompt, productName) {
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${imageModel}:generateContent?key=${apiKey}`;
+            
+            // Enhance the prompt to guarantee high quality, non-text, realistic model shots
+            const enhancedPrompt = `High quality commercial product photography. Ultra-realistic, 8k resolution, cinematic lighting. Model interacting with product naturally. NO TEXT, NO WATERMARKS, NO LOGOS. Product: ${productName}. Scene description: ${prompt}`;
 
-        function renderFallbackImages() {
-            for (let i = 1; i <= 3; i++) {
-                renderSingleFallbackImage(i, document.getElementById('productName').value || 'Produk Affiliate');
-            }
-        }
-
-        function renderTextOutputs(data) {
-            // Part 1
-            document.getElementById('part1Camera').innerText = data.part1.camera;
-            document.getElementById('part1VisualDesc').innerText = data.part1.visualDesc;
-            document.getElementById('part1VO').innerText = `"${data.part1.voiceover}"`;
-            document.getElementById('part1HookBadge').innerText = data.part1.hookText || 'Beneran Works!';
-            document.getElementById('part1SubtitleText').innerText = `"${data.part1.voiceover.substring(0, 50)}..."`;
-            document.getElementById('promptPart1Text').value = data.part1.flowAiPrompt;
-
-            // Part 2
-            document.getElementById('part2Camera').innerText = data.part2.camera;
-            document.getElementById('part2VisualDesc').innerText = data.part2.visualDesc;
-            document.getElementById('part2VO').innerText = `"${data.part2.voiceover}"`;
-            document.getElementById('part2SubtitleText').innerText = `"${data.part2.voiceover.substring(0, 50)}..."`;
-            document.getElementById('promptPart2Text').value = data.part2.flowAiPrompt;
-
-            if (data.part2.featureBadges && Array.isArray(data.part2.featureBadges)) {
-                const badgeContainer = document.getElementById('part2FeatureBadges');
-                badgeContainer.innerHTML = data.part2.featureBadges.slice(0, 3).map((feat, idx) => `
-                    <span class="bg-black/80 text-white text-[9px] font-medium px-2 py-1 rounded-md border border-white/20 flex items-center gap-1">
-                        <i class="fa-solid fa-check text-emerald-400"></i> ${feat}
-                    </span>
-                `).join('');
-            }
-
-            // Part 3
-            document.getElementById('part3Camera').innerText = data.part3.camera;
-            document.getElementById('part3VisualDesc').innerText = data.part3.visualDesc;
-            document.getElementById('part3VO').innerText = `"${data.part3.voiceover}"`;
-            document.getElementById('part3RatingBadge').querySelector('.text-xl').innerText = data.part3.ratingText || '9/10';
-            document.getElementById('part3CTABadge').querySelector('span').innerText = data.part3.ctaText || 'KLIK LINK DI DESKRIPSI!';
-            document.getElementById('part3SubtitleText').innerText = `"${data.part3.voiceover.substring(0, 50)}..."`;
-            document.getElementById('promptPart3Text').value = data.part3.flowAiPrompt;
-
-            // Negative Realism Prompt
-            document.getElementById('promptRealismText').value = data.negativePrompt || 
-                "PHOTOREALISTIC COMMERCIAL FOOTAGE WITH PHYSICALLY PLAUSIBLE MOTION. Natural handheld micro-movement. Natural autofocus behavior and realistic depth of field. Avoid plastic-looking skin, warped fingers, floating objects, impossible reflections, distorted packaging, changing logos, or synthetic CGI look.";
-        }
-
-        function generateFallbackData(productName, features, modelAvatar, rating, cta) {
-            return {
-                part1: {
-                    camera: "35mm f/1.8 Prime Lens, Soft Eye-level Push-in, 60fps Smooth Motion",
-                    visualDesc: `A real model (${modelAvatar}) unboxing and picking up ${productName} in a clean, modern lifestyle studio setup with natural window side lighting.`,
-                    voiceover: `Gak nyangka banget! Baru kali ini aku nemu ${productName} yang beneran terasa bedanya dari pemakaian pertama.`,
-                    hookText: "Beneran Works & High Quality!",
-                    flowAiPrompt: `PART 1 (0-10S): Photorealistic 9:16 vertical commercial video of ${productName}. Shot on 35mm lens, f/1.8. A real model (${modelAvatar}) holding and unboxing ${productName} with smooth natural hand movements in a modern bright studio. Natural skin texture, soft shadows, clear branding, zero distortion. High definition, 4k affiliate review video.`
+            const payload = {
+                contents: [{
+                    parts: [{ text: enhancedPrompt }]
+                }],
+                generationConfig: {
+                    responseModalities: ['IMAGE'],
+                    imageConfig: { aspectRatio: "16:9" } // Wide to fit table nicely, though video is 9:16. Table looks better with wide images.
                 },
-                part2: {
-                    camera: "85mm Macro f/2.8 Lens, Top-Down Drop & Tilt, Close-up Detail Focus",
-                    visualDesc: `Macro close-up shot showing hands demonstrating ${productName} texture and key highlights: ${features}.`,
-                    voiceover: `Cobain deh liat tekstur dan bahannya, terasa super premium dan nyaman banget dipake harian.`,
-                    featureBadges: ["Kualitas Premium", "Hasil Nyata", "Nyaman Dipakai"],
-                    flowAiPrompt: `PART 2 (10-20S CONTINUATION): Direct seamless continuation from Part 1 final frame. Macro 85mm shot of human hands demonstrating ${productName}. Detailed product interaction, close-up texture, realistic fluid motion, physically plausible depth of field, exact product continuity from Part 1.`
-                },
-                part3: {
-                    camera: "50mm f/1.4 Lens, High Angle Lifestyle Showcase, Warm Bokeh Background",
-                    visualDesc: `Smiling model presenting ${productName} on a wooden table, giving a thumbs-up gesture and pointing to the link.`,
-                    voiceover: `Overall ini ${rating}. Buat kalian yang mau promo terbatas, langsung aja ${cta}!`,
-                    ratingText: rating,
-                    ctaText: cta,
-                    flowAiPrompt: `PART 3 (20-30S HERO CTA): Direct seamless continuation from Part 2 final frame. Hero shot of smiling model (${modelAvatar}) seated at a table displaying ${productName}, giving a thumbs up gesture. High converting affiliate commercial aesthetic, warm lighting, cinematic depth of field, clear hero product placement.`
-                },
-                negativePrompt: "Photorealistic commercial footage. Avoid plastic skin, deformed hands, duplicate fingers, changing product logos, unnatural motion blur, oversaturated HDR, or synthetic CGI appearance."
             };
-        }
 
-        function switchTab(tabName) {
-            const visualTab = document.getElementById('visualTabContent');
-            const promptsTab = document.getElementById('promptsTabContent');
-            const visualBtn = document.getElementById('tabVisualBtn');
-            const promptsBtn = document.getElementById('tabPromptsBtn');
-
-            if (tabName === 'visual') {
-                visualTab.classList.remove('hidden');
-                promptsTab.classList.add('hidden');
-                visualBtn.className = "pb-3 text-sm font-bold border-b-2 border-indigo-500 text-indigo-400 flex items-center space-x-2";
-                promptsBtn.className = "pb-3 text-sm font-bold text-gray-400 hover:text-gray-200 border-b-2 border-transparent flex items-center space-x-2";
-            } else {
-                visualTab.classList.add('hidden');
-                promptsTab.classList.remove('hidden');
-                promptsBtn.className = "pb-3 text-sm font-bold border-b-2 border-indigo-500 text-indigo-400 flex items-center space-x-2";
-                visualBtn.className = "pb-3 text-sm font-bold text-gray-400 hover:text-gray-200 border-b-2 border-transparent flex items-center space-x-2";
+            // Implement simple retry mechanism
+            let retries = 2;
+            while(retries > 0) {
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    if (!response.ok) throw new Error(`Image API Error: ${response.status}`);
+                    
+                    const result = await response.json();
+                    const part = result?.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+                    
+                    if (part && part.inlineData) {
+                        return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+                    } else {
+                         throw new Error("No image data in response");
+                    }
+                } catch (error) {
+                    console.error("Image Generation Error:", error);
+                    retries--;
+                    if (retries > 0) await new Promise(r => setTimeout(r, 2000)); // wait 2s before retry
+                }
             }
+            // Return null if all retries fail, allowing caller to handle fallback
+            return null; 
         }
 
-        async function regeneratePartImage(partNum) {
-            showToast(`Regenerating foto visual Part ${partNum}...`);
-            const productName = document.getElementById('productName').value || 'Produk';
-            const modelAvatar = document.getElementById('modelAvatar').value;
-            renderSingleFallbackImage(partNum, productName);
+        function renderStoryboardTable(data) {
+            storyboardTbody.innerHTML = "";
+            let currentPart = 0;
 
+            data.storyboard.forEach((scene, index) => {
+                // Add part header if it's a new part
+                if (scene.partNumber !== currentPart) {
+                    currentPart = scene.partNumber;
+                    const headerRow = document.createElement('tr');
+                    headerRow.innerHTML = `<td colspan="9" class="part-header py-3">${scene.partTitle}</td>`;
+                    storyboardTbody.appendChild(headerRow);
+                }
+
+                // Add scene row
+                const tr = document.createElement('tr');
+                tr.className = "bg-slate-800 border-b border-slate-700 hover:bg-slate-750 transition-colors";
+                
+                tr.innerHTML = `
+                    <td class="font-bold text-slate-300 text-lg">${scene.sceneNumber}</td>
+                    <td class="text-sm text-slate-400 whitespace-nowrap">${scene.duration}</td>
+                    <td class="text-sm text-slate-300">${scene.angle}</td>
+                    <td class="p-2 relative min-w-[200px] h-[120px]">
+                        <!-- Image Container with Shimmer Effect -->
+                        <div id="img-container-${scene.sceneNumber}" class="w-full h-full rounded-md overflow-hidden image-shimmer flex items-center justify-center relative">
+                            <span class="text-xs text-slate-500 absolute z-10 flex flex-col items-center gap-2">
+                                <div class="loader w-4 h-4 border-2 border-slate-500 border-b-amber-500"></div>
+                                Generating Image...
+                            </span>
+                            <img id="img-${scene.sceneNumber}" class="w-full h-full object-cover relative z-20 opacity-0 transition-opacity duration-500" alt="Scene ${scene.sceneNumber}">
+                        </div>
+                    </td>
+                    <td class="text-sm text-slate-300 text-left">${scene.productAction}</td>
+                    <td class="text-sm text-slate-400">${scene.lighting}</td>
+                    <td class="text-sm text-slate-400">${scene.transition}</td>
+                    <td class="text-sm text-slate-300 italic text-left">"${scene.voiceover}"</td>
+                    <td class="text-sm font-semibold text-amber-500 bg-slate-900/50 rounded">${scene.textOverlay}</td>
+                `;
+                
+                storyboardTbody.appendChild(tr);
+            });
+        }
+
+        function renderPrompts(prompts) {
+            fullPromptText = `PROMPT STORYBOARD VIDEO AI\nDurasi: 30 detik | Format: Vertical 9:16 | Struktur: 3 Part x 10 detik\n\n`;
+            fullPromptText += `MASTER STYLE/CONSISTENCY\n${prompts.masterStyle}\n\n`;
+            fullPromptText += `PART 1 - 0-10 DETIK | OPENING\n${prompts.part1}\n\n`;
+            fullPromptText += `PART 2 - 10-20 DETIK | MAIN FEATURES\n${prompts.part2}\n\n`;
+            fullPromptText += `PART 3 - 20-30 DETIK | FINAL POSE & CTA\n${prompts.part3}\n\n`;
+            fullPromptText += `NEGATIVE PROMPT\n${prompts.negativePrompt}\n\n`;
+            fullPromptText += `SETTING YANG DISARANKAN\n${prompts.settings}`;
+
+            promptContainer.innerHTML = `
+                <div class="space-y-4">
+                    <div>
+                        <h3 class="text-amber-500 font-bold mb-1">MASTER STYLE/CONSISTENCY</h3>
+                        <p class="bg-slate-900 p-3 rounded-md border border-slate-700">${prompts.masterStyle}</p>
+                    </div>
+                    <div>
+                        <h3 class="text-amber-500 font-bold mb-1">PART 1 - 0-10 DETIK | OPENING</h3>
+                        <p class="bg-slate-900 p-3 rounded-md border border-slate-700">${prompts.part1}</p>
+                    </div>
+                    <div>
+                        <h3 class="text-amber-500 font-bold mb-1">PART 2 - 10-20 DETIK | MAIN FEATURES</h3>
+                        <p class="bg-slate-900 p-3 rounded-md border border-slate-700">${prompts.part2}</p>
+                    </div>
+                    <div>
+                        <h3 class="text-amber-500 font-bold mb-1">PART 3 - 20-30 DETIK | FINAL POSE & CTA</h3>
+                        <p class="bg-slate-900 p-3 rounded-md border border-slate-700">${prompts.part3}</p>
+                    </div>
+                    <div>
+                        <h3 class="text-red-400 font-bold mb-1">NEGATIVE PROMPT</h3>
+                        <p class="bg-slate-900 p-3 rounded-md border border-red-900/30 text-red-200">${prompts.negativePrompt}</p>
+                    </div>
+                    <div>
+                        <h3 class="text-blue-400 font-bold mb-1">SETTING YANG DISARANKAN</h3>
+                        <p class="bg-slate-900 p-3 rounded-md border border-blue-900/30">${prompts.settings}</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            if (!uploadedBase64) {
+                showToast("Silakan upload foto produk terlebih dahulu.", "error");
+                return;
+            }
+
+            const productName = document.getElementById('product-name').value;
+            const category = document.getElementById('product-category').value;
+            const features = document.getElementById('product-features').value;
+
+            // UI Updates for Loading
+            form.parentElement.classList.add('hidden');
+            loadingState.classList.replace('hidden', 'flex');
+            resultsSection.classList.add('hidden');
+            
             try {
-                const apiKey = state.customApiKey || "";
-                const imageUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image:generateContent?key=${apiKey}`;
-                const promptText = `Photorealistic 9:16 vertical commercial scene for Part ${partNum} of ${productName} featuring model (${modelAvatar}), 4k camera quality, studio lighting.`;
+                // 1. Fetch Text Data (Storyboard structure + Prompts)
+                loadingTitle.innerText = "Menyusun Storyboard...";
+                loadingDesc.innerText = "AI sedang membuat alur cerita dan prompt video...";
+                
+                generatedData = await fetchStoryboardData(productName, category, features, uploadedBase64);
+                
+                // 2. Render initial UI
+                displayProductName.innerText = productName.toUpperCase();
+                renderStoryboardTable(generatedData);
+                renderPrompts(generatedData.videoPrompts);
+                
+                // Switch view to results
+                loadingState.classList.replace('flex', 'hidden');
+                resultsSection.classList.remove('hidden');
+                form.parentElement.classList.remove('hidden'); // Show form again at top for modifications
+                showToast("Berhasil membuat struktur! Mulai generate gambar...", "success");
 
-                const resp = await fetch(imageUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [{ parts: [{ text: promptText }] }],
-                        generationConfig: { responseModalities: ['IMAGE'], imageConfig: { aspectRatio: "9:16" } }
-                    })
-                });
-
-                if (resp.ok) {
-                    const resData = await resp.json();
-                    const base64Data = resData?.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
-                    const mime = resData?.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.mimeType || 'image/png';
-                    if (base64Data) {
-                        document.getElementById(`part${partNum}VisualImg`).src = `data:${mime};base64,${base64Data}`;
-                        showToast(`Gambar Part ${partNum} berhasil diregenerasi!`);
+                // 3. Sequentially generate images to avoid rate limits
+                // We process them one by one to ensure stability ("anti eror")
+                for (let i = 0; i < generatedData.storyboard.length; i++) {
+                    const scene = generatedData.storyboard[i];
+                    const imgElement = document.getElementById(`img-${scene.sceneNumber}`);
+                    const containerElement = document.getElementById(`img-container-${scene.sceneNumber}`);
+                    
+                    try {
+                        const base64ImageUrl = await generateSceneImage(scene.visualPromptForImageGen, productName);
+                        
+                        if (base64ImageUrl) {
+                            imgElement.src = base64ImageUrl;
+                            // Wait for image to load before fading in
+                            imgElement.onload = () => {
+                                imgElement.classList.replace('opacity-0', 'opacity-100');
+                                containerElement.classList.remove('image-shimmer');
+                                // Remove loading text span
+                                const span = containerElement.querySelector('span');
+                                if(span) span.remove();
+                            };
+                        } else {
+                            throw new Error("Empty image returned");
+                        }
+                    } catch (err) {
+                        console.error(`Failed to load image for scene ${scene.sceneNumber}:`, err);
+                        // Fallback mechanism on error
+                        containerElement.classList.remove('image-shimmer');
+                        containerElement.innerHTML = `
+                            <div class="flex flex-col items-center justify-center p-2 text-center text-slate-500">
+                                <i class="fa-solid fa-image-slash text-2xl mb-1"></i>
+                                <span class="text-[10px] leading-tight">Gagal muat.<br>Generasi dibatasi.</span>
+                            </div>
+                        `;
                     }
+                    
+                    // Small delay between requests to be gentle on the API
+                    await new Promise(r => setTimeout(r, 1000));
                 }
-            } catch (e) {
-                console.error(e);
+                
+                showToast("Semua gambar berhasil digenerate!", "success");
+
+            } catch (error) {
+                console.error("Main Process Error:", error);
+                loadingState.classList.replace('flex', 'hidden');
+                form.parentElement.classList.remove('hidden');
+                showToast("Terjadi kesalahan. Pastikan file valid dan coba lagi.", "error");
             }
-        }
+        });
 
-        function copyText(elementId) {
-            const el = document.getElementById(elementId);
-            if (!el) return;
-            el.select();
-            document.execCommand('copy');
-            showToast('Prompt berhasil dicopy ke clipboard!');
-        }
-
-        function copyAllPrompts() {
-            const p1 = document.getElementById('promptPart1Text').value;
-            const p2 = document.getElementById('promptPart2Text').value;
-            const p3 = document.getElementById('promptPart3Text').value;
-            const neg = document.getElementById('promptRealismText').value;
-
-            const fullText = `=== GOOGLE FLOW AI VIDEO PROMPTS (30 DETIK) ===\n\n--- PART 1 (0-10s) ---\n${p1}\n\n--- PART 2 (10-20s CONTINUATION) ---\n${p2}\n\n--- PART 3 (20-30s HERO CTA) ---\n${p3}\n\n--- CAMERA & REALISM MODULE ---\n${neg}`;
-
-            const tempInput = document.createElement('textarea');
-            tempInput.value = fullText;
-            document.body.appendChild(tempInput);
-            tempInput.select();
-            document.execCommand('copy');
-            document.body.removeChild(tempInput);
-
-            showToast('Semua prompt (Part 1-3 & Realism) berhasil dicopy!');
-        }
-
-        function exportToPDF() {
-            const element = document.getElementById('storyboardPrintable');
-            showToast('Menyiapkan file PDF Storyboard...');
-            const opt = {
-                margin:       0.5,
-                filename:     `Storyboard_Affiliate_${Date.now()}.pdf`,
-                image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2, useCORS: true },
-                jsPDF:        { unit: 'in', format: 'letter', orientation: 'landscape' }
-            };
-            html2pdf().set(opt).from(element).save();
-        }
-
-        function updateProgress(percent, statusText) {
-            document.getElementById('progressBar').style.width = `${percent}%`;
-            if (statusText) {
-                document.getElementById('loadingStatus text-xs').innerText = statusText;
-            }
-        }
-
-        function showToast(msg) {
-            const toast = document.getElementById('toast');
-            document.getElementById('toastMessage').innerText = msg;
-            toast.classList.remove('translate-y-20', 'opacity-0');
-            setTimeout(() => {
-                toast.classList.add('translate-y-20', 'opacity-0');
-            }, 3000);
-        }
-
-        function openApiKeyModal() {
-            document.getElementById('apiKeyModal').classList.remove('hidden');
-        }
-
-        function closeApiKeyModal() {
-            document.getElementById('apiKeyModal').classList.add('hidden');
-        }
-
-        function saveApiKey() {
-            const key = document.getElementById('customApiKeyInput').value.trim();
-            if (key) {
-                state.customApiKey = key;
-                document.getElementById('apiKeyStatus').innerText = 'API Key: Custom Set';
-                showToast('API Key kustom berhasil disimpan!');
-            } else {
-                state.customApiKey = '';
-                document.getElementById('apiKeyStatus').innerText = 'API Key: Automatic';
-                showToast('Menggunakan API Key otomatis.');
-            }
-            closeApiKeyModal();
-        }
-
-        function resetAll() {
-            if (confirm('Apakah Anda yakin ingin me-reset seluruh form?')) {
-                removeProductImage();
-                document.getElementById('productName').value = '';
-                document.getElementById('productFeatures').value = '';
-                document.getElementById('outputSection').classList.add('hidden');
-                showToast('Seluruh data berhasil di-reset.');
-            }
-        }
-
-        // Initialize drag & drop event listeners
-        window.onload = function() {
-            const dropZone = document.getElementById('dropZone');
-            ['dragenter', 'dragover'].forEach(eventName => {
-                dropZone.addEventListener(eventName, (e) => { e.preventDefault(); dropZone.classList.add('border-indigo-500'); }, false);
-            });
-            ['dragleave', 'drop'].forEach(eventName => {
-                dropZone.addEventListener(eventName, (e) => { e.preventDefault(); dropZone.classList.remove('border-indigo-500'); }, false);
-            });
-            dropZone.addEventListener('drop', (e) => {
-                const dt = e.dataTransfer;
-                const files = dt.files;
-                if (files.length) {
-                    document.getElementById('productImageInput').files = files;
-                    handleImageUpload({ target: { files: files } });
-                }
-            });
-
-            // Default preset load for instant preview
-            loadPreset('skincare');
-        };
     </script>
 </body>
 </html>
