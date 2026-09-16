@@ -278,8 +278,8 @@
 
     <script>
         // --- Core Configuration ---
-        const flashModel = "gemini-1.5-flash"; // Diperbaiki ke model stabil yang tersedia
-        const imageModel = "gemini-1.5-pro"; // Diperbaiki ke model stabil untuk fallback
+        const flashModel = "gemini-1.5-flash-latest"; // Menggunakan versi terbaru yang stabil
+        const imageModel = "imagen-3.0-generate-001"; // Model khusus untuk image generation
         
         // --- DOM Elements ---
         const form = document.getElementById('generator-form');
@@ -563,6 +563,9 @@
                         if (response.status === 400 || response.status === 403) {
                              throw new Error("API Key tidak valid atau format permintaan ditolak. Harap periksa API Key.");
                         }
+                        if (response.status === 404) {
+                             throw new Error("Model AI tidak ditemukan (404). Pastikan API Key valid dan memiliki akses ke model Gemini terbaru.");
+                        }
                         throw new Error(`API Error: ${response.status}`);
                     }
                     
@@ -584,7 +587,8 @@
 
         async function generateSceneImage(prompt, productName, category) {
             const activeApiKey = getActiveApiKey();
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${imageModel}:generateContent?key=${activeApiKey}`;
+            // Menggunakan endpoint Imagen 3 yang benar untuk image generation
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${imageModel}:predict?key=${activeApiKey}`;
             
             // Enhance the prompt to guarantee high quality, human models, and strictly NO TEXT
             const enhancedPrompt = `Ultra-realistic commercial product photography. The product is a ${category} named "${productName}". 
@@ -593,13 +597,13 @@
             ABSOLUTELY NO TEXT, NO FONTS, NO LETTERS, NO TYPOGRAPHY, NO WATERMARKS in the image. Focus purely on the visual scene.`;
 
             const payload = {
-                contents: [{
-                    parts: [{ text: enhancedPrompt }]
-                }],
-                generationConfig: {
-                    responseModalities: ['IMAGE'],
-                    imageConfig: { aspectRatio: "16:9" } 
-                },
+                instances: [
+                    { prompt: enhancedPrompt }
+                ],
+                parameters: {
+                    sampleCount: 1,
+                    aspectRatio: "16:9"
+                }
             };
 
             // Implement Exponential Backoff for Vercel/Free Tier Anti-Error
@@ -625,10 +629,10 @@
                     }
                     
                     const result = await response.json();
-                    const part = result?.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+                    const base64Data = result?.predictions?.[0]?.bytesBase64Encoded;
                     
-                    if (part && part.inlineData) {
-                        return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+                    if (base64Data) {
+                        return `data:image/jpeg;base64,${base64Data}`;
                     } else {
                          throw new Error("No image data in response");
                     }
