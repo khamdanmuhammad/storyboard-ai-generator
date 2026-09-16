@@ -453,6 +453,10 @@
         // --- Core Application Logic ---
         async function fetchStoryboardData(productName, category, features, imageData) {
             const activeApiKey = getActiveApiKey();
+            if (!activeApiKey) {
+                throw new Error("API Key Gemini wajib diisi! Dapatkan secara gratis di Google AI Studio.");
+            }
+            
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${flashModel}:generateContent?key=${activeApiKey}`;
             
             const systemInstruction = `
@@ -557,23 +561,39 @@
                         body: JSON.stringify(payload)
                     });
                     
+                    const result = await response.json();
+                    
                     if (!response.ok) {
-                        const errorDetails = await response.text();
-                        console.error("API Error Details:", errorDetails);
+                        if (result.error) {
+                            throw new Error(`API Error: ${result.error.message}`);
+                        }
                         if (response.status === 400 || response.status === 403) {
-                             throw new Error("API Key tidak valid atau format permintaan ditolak. Harap periksa API Key.");
+                             throw new Error("API Key tidak valid. Harap periksa kembali API Key Anda.");
                         }
                         if (response.status === 404) {
-                             throw new Error("Model AI tidak ditemukan (404). Pastikan API Key valid dan memiliki akses ke model Gemini terbaru.");
+                             throw new Error("Model AI tidak ditemukan. Pastikan API Key Anda memiliki akses ke Gemini.");
                         }
-                        throw new Error(`API Error: ${response.status}`);
+                        throw new Error(`HTTP Error: ${response.status}`);
                     }
                     
-                    const result = await response.json();
-                    if (result.candidates && result.candidates[0].content.parts[0].text) {
-                        return JSON.parse(result.candidates[0].content.parts[0].text);
+                    if (!result.candidates || result.candidates.length === 0) {
+                        throw new Error("AI tidak memberikan respons. Silakan coba lagi.");
+                    }
+
+                    const candidate = result.candidates[0];
+                    if (candidate.finishReason && candidate.finishReason !== 'STOP') {
+                        throw new Error(`Proses dibatalkan AI karena: ${candidate.finishReason}. (Mungkin terblokir filter keamanan Google).`);
+                    }
+                    
+                    if (candidate.content && candidate.content.parts && candidate.content.parts[0].text) {
+                        try {
+                            return JSON.parse(candidate.content.parts[0].text);
+                        } catch (parseErr) {
+                            console.error("Raw AI text output:", candidate.content.parts[0].text);
+                            throw new Error("AI gagal menghasilkan format data yang benar. Silakan klik generate ulang.");
+                        }
                     } else {
-                        throw new Error("Invalid response structure");
+                        throw new Error("Struktur respons AI tidak valid.");
                     }
                 } catch (error) {
                     console.error("Fetch JSON Error:", error);
@@ -587,6 +607,8 @@
 
         async function generateSceneImage(prompt, productName, category) {
             const activeApiKey = getActiveApiKey();
+            if (!activeApiKey) return null;
+            
             // Menggunakan endpoint Imagen 3 yang benar untuk image generation
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${imageModel}:predict?key=${activeApiKey}`;
             
@@ -618,23 +640,27 @@
                         body: JSON.stringify(payload)
                     });
                     
+                    const result = await response.json();
+
                     if (!response.ok) {
+                         if (result.error) {
+                             throw new Error(`Image API Error: ${result.error.message}`);
+                         }
                          if (response.status === 429) {
-                             throw new Error("Rate limit exceeded"); // Triggers backoff
+                             throw new Error("Limit rate terlampaui"); // Triggers backoff
                          }
                          if (response.status === 400 || response.status === 403) {
-                             throw new Error("API Key Error pada Image Gen");
+                             throw new Error("API Key tidak valid untuk Imagen");
                          }
-                         throw new Error(`Image API Error: ${response.status}`);
+                         throw new Error(`HTTP Error: ${response.status}`);
                     }
                     
-                    const result = await response.json();
                     const base64Data = result?.predictions?.[0]?.bytesBase64Encoded;
                     
                     if (base64Data) {
                         return `data:image/jpeg;base64,${base64Data}`;
                     } else {
-                         throw new Error("No image data in response");
+                         throw new Error("Data gambar kosong dari AI");
                     }
                 } catch (error) {
                     retries--;
@@ -734,6 +760,13 @@
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
             
+            const activeApiKey = getActiveApiKey();
+            if (!activeApiKey) {
+                showToast("API Key Gemini wajib diisi! Silakan paste di kolom atas.", "error");
+                document.getElementById('api-key-input').focus();
+                return;
+            }
+
             if (!uploadedBase64) {
                 showToast("Silakan upload foto produk terlebih dahulu.", "error");
                 return;
