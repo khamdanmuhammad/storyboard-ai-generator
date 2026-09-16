@@ -474,7 +474,8 @@
             Fitur Utama: ${features || "Analisis dari gambar"}
             
             Buat 9 scene storyboard (3 scene per part).
-            Sediakan deskripsi visual bahasa Inggris (visualPromptForImageGen) yang SANGAT DETAIL untuk meng-generate gambar storyboard (harus ultra realistis, fotorealistik, sebutkan ada model pria/wanita sedang menggunakan produk tersebut, lighting, angle, no CGI).
+            Sediakan deskripsi visual bahasa Inggris (visualPromptForImageGen) yang SANGAT DETAIL untuk meng-generate gambar storyboard. 
+            ATURAN VISUAL PROMPT: Harus ultra realistis, fotorealistik. WAJIB sebutkan subjek (model manusia pria/wanita) yang sedang berinteraksi/menggunakan produk tersebut. JANGAN PERNAH menyuruh AI menuliskan teks, logo, atau tipografi pada gambar. Fokus pada aksi fisik model dan detail produk.
             
             Kemudian buat prompt komprehensif untuk Google Flow AI (video generator) berdasarkan kontinuitas model dan adegan (Part 1, 2, 3 menyambung secara natural).
             `;
@@ -493,7 +494,7 @@
                                 sceneNumber: { type: "NUMBER" },
                                 duration: { type: "STRING", description: "0-3s, 3-6s, dst" },
                                 angle: { type: "STRING", description: "Angle & movement kamera" },
-                                visualPromptForImageGen: { type: "STRING", description: "PROMPT BAHASA INGGRIS UNTUK IMAGE GENERATOR. Harus sangat deskriptif, fotorealistik, sebutkan subjek (model) menggunakan produk secara realistis, lighting, kamera." },
+                                visualPromptForImageGen: { type: "STRING", description: "PROMPT BAHASA INGGRIS UNTUK IMAGE GENERATOR. Wajib deskripsikan model manusia yang memegang/memakai produk. Fotorealistik. Dilarang keras ada unsur teks/tulisan di dalam deskripsi visual ini." },
                                 productAction: { type: "STRING", description: "Deskripsi singkat aksi produk dalam Bahasa Indonesia" },
                                 lighting: { type: "STRING" },
                                 transition: { type: "STRING" },
@@ -579,12 +580,15 @@
             throw lastError;
         }
 
-        async function generateSceneImage(prompt, productName) {
+        async function generateSceneImage(prompt, productName, category) {
             const activeApiKey = getActiveApiKey();
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${imageModel}:generateContent?key=${activeApiKey}`;
             
-            // Enhance the prompt to guarantee high quality, non-text, realistic model shots
-            const enhancedPrompt = `High quality commercial product photography. Ultra-realistic, 8k resolution, cinematic lighting. Model interacting with product naturally. NO TEXT, NO WATERMARKS, NO LOGOS. Product: ${productName}. Scene description: ${prompt}`;
+            // Enhance the prompt to guarantee high quality, human models, and strictly NO TEXT
+            const enhancedPrompt = `Ultra-realistic commercial product photography. The product is a ${category} named "${productName}". 
+            Scene description: ${prompt}. 
+            CRITICAL INSTRUCTIONS: Show a realistic human model naturally holding, wearing, or interacting with the product. Cinematic lighting, 8k resolution, photorealistic skin texture. 
+            ABSOLUTELY NO TEXT, NO FONTS, NO LETTERS, NO TYPOGRAPHY, NO WATERMARKS in the image. Focus purely on the visual scene.`;
 
             const payload = {
                 contents: [{
@@ -592,12 +596,14 @@
                 }],
                 generationConfig: {
                     responseModalities: ['IMAGE'],
-                    imageConfig: { aspectRatio: "16:9" } // Wide to fit table nicely, though video is 9:16. Table looks better with wide images.
+                    imageConfig: { aspectRatio: "16:9" } 
                 },
             };
 
-            // Implement simple retry mechanism
-            let retries = 2;
+            // Implement Exponential Backoff for Vercel/Free Tier Anti-Error
+            let retries = 3;
+            let delay = 2000; // Start with 2 seconds
+
             while(retries > 0) {
                 try {
                     const response = await fetch(apiUrl, {
@@ -607,7 +613,12 @@
                     });
                     
                     if (!response.ok) {
-                         if (response.status === 400 || response.status === 403) throw new Error("API Key Error pada Image Gen");
+                         if (response.status === 429) {
+                             throw new Error("Rate limit exceeded"); // Triggers backoff
+                         }
+                         if (response.status === 400 || response.status === 403) {
+                             throw new Error("API Key Error pada Image Gen");
+                         }
                          throw new Error(`Image API Error: ${response.status}`);
                     }
                     
@@ -620,12 +631,16 @@
                          throw new Error("No image data in response");
                     }
                 } catch (error) {
-                    console.error("Image Generation Error:", error);
                     retries--;
-                    if (retries > 0) await new Promise(r => setTimeout(r, 2000)); // wait 2s before retry
+                    if (retries > 0) {
+                        // Wait before retrying (Exponential Backoff)
+                        await new Promise(r => setTimeout(r, delay));
+                        delay *= 2; // Increase delay (2s -> 4s)
+                    } else {
+                        throw error;
+                    }
                 }
             }
-            // Return null if all retries fail, allowing caller to handle fallback
             return null; 
         }
 
@@ -745,15 +760,16 @@
                 form.parentElement.classList.remove('hidden'); // Show form again at top for modifications
                 showToast("Berhasil membuat struktur! Mulai generate gambar...", "success");
 
-                // 3. Sequentially generate images to avoid rate limits
-                // We process them one by one to ensure stability ("anti eror")
+                // 3. Sequentially generate images with safe delays to avoid 429 Too Many Requests
+                // We process them one by one with a guaranteed delay for stability in Vercel
                 for (let i = 0; i < generatedData.storyboard.length; i++) {
                     const scene = generatedData.storyboard[i];
                     const imgElement = document.getElementById(`img-${scene.sceneNumber}`);
                     const containerElement = document.getElementById(`img-container-${scene.sceneNumber}`);
                     
                     try {
-                        const base64ImageUrl = await generateSceneImage(scene.visualPromptForImageGen, productName);
+                        // Pass category for better realistic context
+                        const base64ImageUrl = await generateSceneImage(scene.visualPromptForImageGen, productName, category);
                         
                         if (base64ImageUrl) {
                             imgElement.src = base64ImageUrl;
@@ -773,15 +789,18 @@
                         // Fallback mechanism on error
                         containerElement.classList.remove('image-shimmer');
                         containerElement.innerHTML = `
-                            <div class="flex flex-col items-center justify-center p-2 text-center text-slate-500">
-                                <i class="fa-solid fa-image-slash text-2xl mb-1"></i>
-                                <span class="text-[10px] leading-tight">Gagal muat.<br>${err.message.includes('API Key') ? 'Cek API Key' : 'Generasi dibatasi.'}</span>
+                            <div class="flex flex-col items-center justify-center p-2 text-center text-slate-500 w-full h-full bg-slate-800">
+                                <i class="fa-solid fa-image-slash text-2xl mb-1 text-slate-600"></i>
+                                <span class="text-[10px] leading-tight text-slate-400">Gagal muat.<br>${err.message.includes('API Key') ? 'Cek API Key' : 'Limit/Jaringan.'}</span>
                             </div>
                         `;
                     }
                     
-                    // Small delay between requests to be gentle on the API
-                    await new Promise(r => setTimeout(r, 1000));
+                    // CRITICAL ANTI-ERROR VERCEL: 
+                    // Force a 4-second delay between successful requests to stay under the 15 RPM free tier limit.
+                    if (i < generatedData.storyboard.length - 1) {
+                        await new Promise(r => setTimeout(r, 4000));
+                    }
                 }
                 
                 showToast("Semua gambar berhasil digenerate!", "success");
