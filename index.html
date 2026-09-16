@@ -147,6 +147,17 @@
             </h2>
             
             <form id="generator-form" class="space-y-6">
+                <!-- API Key Configuration (Crucial for Vercel/External Hosting) -->
+                <div class="p-4 bg-slate-900/60 rounded-lg border border-amber-500/40 shadow-inner">
+                    <label class="block text-sm font-medium text-amber-400 mb-2 flex items-center gap-2">
+                        <i class="fa-solid fa-key"></i> Konfigurasi API Key (Wajib jika dihosting di Vercel)
+                    </label>
+                    <input type="password" id="api-key-input" placeholder="Paste Gemini API Key Anda di sini..." class="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition">
+                    <p class="text-xs text-slate-400 mt-2">
+                        Dapatkan API key secara gratis di <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-blue-400 hover:underline">Google AI Studio</a>. Kunci disimpan aman di memori browser Anda. (Biarkan kosong jika menggunakan di dalam Canvas AI).
+                    </p>
+                </div>
+
                 <!-- Image Upload -->
                 <div>
                     <label class="block text-sm font-medium text-slate-300 mb-2">Upload Foto Produk (Wajib)</label>
@@ -267,7 +278,6 @@
 
     <script>
         // --- Core Configuration ---
-        const apiKey = ""; // Canvas handles this automatically.
         const flashModel = "gemini-3-flash-preview";
         const imageModel = "gemini-3.1-flash-image"; // For realistic image generation
         
@@ -292,6 +302,24 @@
         let uploadedBase64 = "";
         let generatedData = null; // Store JSON result
         let fullPromptText = ""; // Store for copy button
+
+        // Load saved API key on startup
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedKey = localStorage.getItem('gemini_api_key');
+            if (savedKey) {
+                document.getElementById('api-key-input').value = savedKey;
+            }
+        });
+
+        // Helper to get active API key
+        function getActiveApiKey() {
+            const inputKey = document.getElementById('api-key-input').value.trim();
+            if (inputKey) {
+                localStorage.setItem('gemini_api_key', inputKey);
+                return inputKey;
+            }
+            return ""; // Fallback to empty string for Canvas environment intercept
+        }
 
         // --- Utility Functions ---
         function showToast(message, type = 'success') {
@@ -424,7 +452,8 @@
 
         // --- Core Application Logic ---
         async function fetchStoryboardData(productName, category, features, imageData) {
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${flashModel}:generateContent?key=${apiKey}`;
+            const activeApiKey = getActiveApiKey();
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${flashModel}:generateContent?key=${activeApiKey}`;
             
             const systemInstruction = `
             Kamu adalah seorang Sutradara Video Iklan Profesional (Creative Director) dan ahli Prompt Engineering untuk AI Video (Google Flow, Kling, Runway).
@@ -527,7 +556,12 @@
                         body: JSON.stringify(payload)
                     });
                     
-                    if (!response.ok) throw new Error(`API Error: ${response.status}`);
+                    if (!response.ok) {
+                        if (response.status === 400 || response.status === 403) {
+                             throw new Error("API Key tidak valid atau kosong. Harap isi form API Key dengan benar.");
+                        }
+                        throw new Error(`API Error: ${response.status}`);
+                    }
                     
                     const result = await response.json();
                     if (result.candidates && result.candidates[0].content.parts[0].text) {
@@ -546,7 +580,8 @@
         }
 
         async function generateSceneImage(prompt, productName) {
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${imageModel}:generateContent?key=${apiKey}`;
+            const activeApiKey = getActiveApiKey();
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${imageModel}:generateContent?key=${activeApiKey}`;
             
             // Enhance the prompt to guarantee high quality, non-text, realistic model shots
             const enhancedPrompt = `High quality commercial product photography. Ultra-realistic, 8k resolution, cinematic lighting. Model interacting with product naturally. NO TEXT, NO WATERMARKS, NO LOGOS. Product: ${productName}. Scene description: ${prompt}`;
@@ -571,7 +606,10 @@
                         body: JSON.stringify(payload)
                     });
                     
-                    if (!response.ok) throw new Error(`Image API Error: ${response.status}`);
+                    if (!response.ok) {
+                         if (response.status === 400 || response.status === 403) throw new Error("API Key Error pada Image Gen");
+                         throw new Error(`Image API Error: ${response.status}`);
+                    }
                     
                     const result = await response.json();
                     const part = result?.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
@@ -737,7 +775,7 @@
                         containerElement.innerHTML = `
                             <div class="flex flex-col items-center justify-center p-2 text-center text-slate-500">
                                 <i class="fa-solid fa-image-slash text-2xl mb-1"></i>
-                                <span class="text-[10px] leading-tight">Gagal muat.<br>Generasi dibatasi.</span>
+                                <span class="text-[10px] leading-tight">Gagal muat.<br>${err.message.includes('API Key') ? 'Cek API Key' : 'Generasi dibatasi.'}</span>
                             </div>
                         `;
                     }
@@ -752,7 +790,15 @@
                 console.error("Main Process Error:", error);
                 loadingState.classList.replace('flex', 'hidden');
                 form.parentElement.classList.remove('hidden');
-                showToast("Terjadi kesalahan. Pastikan file valid dan coba lagi.", "error");
+                
+                let errorMsg = "Terjadi kesalahan sistem. Pastikan file valid dan coba lagi.";
+                if (error.message.includes("API Key")) {
+                    errorMsg = error.message;
+                } else if (error.message.includes("Failed to fetch")) {
+                    errorMsg = "Koneksi terputus. Pastikan internet stabil dan matikan adblocker jika perlu.";
+                }
+                
+                showToast(errorMsg, "error");
             }
         });
 
